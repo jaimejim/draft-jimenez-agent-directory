@@ -128,7 +128,7 @@ Interaction Protocol:
 
 {{fig-arch}} shows the AD architecture.
 
-~~~~ aasvg
+~~~~
                 Registration         Lookup
                  Interface         Interface
      +-------+       |                 |
