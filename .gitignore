@@ -7,7 +7,6 @@
 
 # kdrfc / kramdown-rfc scratch
 *.redxml
-lib/
 
 # Local session notes (not part of the public draft)
 ad-meets-dns-aid-and-dn-anr.md
