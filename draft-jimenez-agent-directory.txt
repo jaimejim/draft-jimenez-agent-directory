@@ -641,25 +641,28 @@ Table of Contents
    agents matching all specified criteria are returned.  A request with
    no filters returns all agents visible to the requesting client.
 
-GET /ad/l?cap_name=summarize&protocol=a2a HTTP/1.1
-Host: directory.example.com
-Accept: application/json
+   GET /ad/l?cap_type=skill&protocol=a2a HTTP/1.1
+   Host: directory.example.com
+   Accept: application/json
 
-HTTP/1.1 200 OK
-Content-Type: application/json
+   HTTP/1.1 200 OK
+   Content-Type: application/json
 
-{
-  "agents": [
-    {
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
-      "description": "Summarizes documents and extracts named entities",
-      "protocols": ["a2a"],
-      "capabilities": ["summarize", "extract_entities"],
-      "href": "/ad/r/4521"
-    }
-  ]
-}
+   {
+     "agents": [
+       {
+         "agent": "recipe-agent",
+         "base": "https://agents.example.com/recipe-agent",
+         "description": "Helps users with recipes and cooking",
+         "protocols": ["a2a"],
+         "capabilities": [
+           {"name": "generate_recipe", "type": "skill"},
+           {"name": "find_substitutes", "type": "skill"}
+         ],
+         "href": "/ad/r/4521"
+       }
+     ]
+   }
 
 5.1.  Query Parameters
 
@@ -707,8 +710,9 @@ Content-Type: application/json
       Interaction protocols the agent supports.
 
    capabilities:
-      An array of capability name strings.  Full capability details
-      (descriptions, schemas) are omitted to keep responses compact.
+      An array of capability summary objects, each with "name" and
+      "type".  Full details (descriptions, schemas, tags) are omitted to
+      keep responses compact.
 
    href:
       The registration resource URI.  Clients retrieve the full
@@ -724,7 +728,7 @@ Content-Type: application/json
    When more results exist beyond the current page, the AD includes a
    Link header [RFC8288] with rel="next":
 
-   Link: </ad/l?cap_name=summarize&page=1&count=50>; rel="next"
+   Link: </ad/l?cap_type=skill&protocol=a2a&page=1&count=50>; rel="next"
 
    An empty agents array with no rel="next" link indicates no results or
    end of results.
