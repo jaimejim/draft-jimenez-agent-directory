@@ -71,6 +71,29 @@ jobs:
         make: gh-pages
         token: ${{ github.token }}
 
+    # Custom domain (jaime.win) is not on author-tools' iddiff allowlist, and
+    # jaimejim.github.io 301-redirects to it. Rewrite iddiff url params to
+    # raw.githubusercontent.com, which is allowlisted.
+    - name: "Rewrite iddiff URLs to raw.githubusercontent.com"
+      if: ${{ github.event_name == 'push' }}
+      env:
+        OWNER: ${{ github.repository_owner }}
+        REPO: ${{ github.event.repository.name }}
+      run: |
+        set -euo pipefail
+        git fetch --depth=1 origin gh-pages
+        git worktree add /tmp/ghpages-rewrite FETCH_HEAD
+        cd /tmp/ghpages-rewrite
+        git checkout -B gh-pages
+        find . -name index.html -print0 | xargs -0 -r sed -i -E \
+          "s|(url_[12]=)https://${OWNER}\.github\.io/${REPO}/|\1https://raw.githubusercontent.com/${OWNER}/${REPO}/gh-pages/|g"
+        if ! git diff --quiet; then
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -am "Rewrite iddiff URLs to raw.githubusercontent.com [ci skip]"
+          git push origin gh-pages
+        fi
+
     - name: "Archive Built Drafts"
       uses: actions/upload-artifact@v6
       with:
