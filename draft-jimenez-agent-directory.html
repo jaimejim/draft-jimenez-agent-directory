@@ -1884,13 +1884,13 @@ Content-Type: application/json
 {
   "agents": [
     {
-      "agent": "recipe-agent",
-      "base": "https://agents.example.com/recipe-agent",
-      "description": "Helps users with recipes and cooking",
+      "agent": "document-analyst",
+      "base": "https://agents.example.com/document-analyst",
+      "description": "Analyzes documents, extracts key clauses and obligations",
       "protocols": ["a2a"],
       "capabilities": [
-        {"name": "generate_recipe", "type": "skill"},
-        {"name": "find_substitutes", "type": "skill"}
+        {"name": "extract_clauses", "type": "skill"},
+        {"name": "summarize_document", "type": "skill"}
       ],
       "href": "/ad/r/4521"
     }

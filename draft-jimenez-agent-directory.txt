@@ -641,28 +641,28 @@ Table of Contents
    agents matching all specified criteria are returned.  A request with
    no filters returns all agents visible to the requesting client.
 
-   GET /ad/l?cap_type=skill&protocol=a2a HTTP/1.1
-   Host: directory.example.com
-   Accept: application/json
+GET /ad/l?cap_type=skill&protocol=a2a HTTP/1.1
+Host: directory.example.com
+Accept: application/json
 
-   HTTP/1.1 200 OK
-   Content-Type: application/json
+HTTP/1.1 200 OK
+Content-Type: application/json
 
-   {
-     "agents": [
-       {
-         "agent": "recipe-agent",
-         "base": "https://agents.example.com/recipe-agent",
-         "description": "Helps users with recipes and cooking",
-         "protocols": ["a2a"],
-         "capabilities": [
-           {"name": "generate_recipe", "type": "skill"},
-           {"name": "find_substitutes", "type": "skill"}
-         ],
-         "href": "/ad/r/4521"
-       }
-     ]
-   }
+{
+  "agents": [
+    {
+      "agent": "document-analyst",
+      "base": "https://agents.example.com/document-analyst",
+      "description": "Analyzes documents, extracts key clauses and obligations",
+      "protocols": ["a2a"],
+      "capabilities": [
+        {"name": "extract_clauses", "type": "skill"},
+        {"name": "summarize_document", "type": "skill"}
+      ],
+      "href": "/ad/r/4521"
+    }
+  ]
+}
 
 5.1.  Query Parameters
 
