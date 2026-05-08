@@ -1381,11 +1381,11 @@ svg :is([fill="white"], [fill^="#fff"]) {
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Endpoint lookup</td>
-            <td class="text-left" rowspan="1" colspan="1">Lookup, agent view (<code>view=agent</code>)</td>
+            <td class="text-left" rowspan="1" colspan="1">Lookup (GET on the lookup endpoint)</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Resource lookup</td>
-            <td class="text-left" rowspan="1" colspan="1">Lookup, capability view (<code>view=cap</code>)</td>
+            <td class="text-left" rowspan="1" colspan="1">Capabilities embedded in the agent registration</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Lifetime (lt)</td>
@@ -1802,7 +1802,7 @@ Content-Type: application/json
 }
 </pre><a href="#section-4.3-2" class="pilcrow">¶</a>
 </div>
-<p id="section-4.3-3">The response includes the full registration content, including capability details (description, schemas) that are omitted from lookup results with <code>view=agent</code>. If the registration resource does not exist, the AD <span class="bcp14">MUST</span> return 404 (Not Found).<a href="#section-4.3-3" class="pilcrow">¶</a></p>
+<p id="section-4.3-3">The response includes the full registration content, including capability details (description, schemas) that are omitted from lookup results (<a href="#lookup-response" class="auto internal xref">Section 5.2</a>). If the registration resource does not exist, the AD <span class="bcp14">MUST</span> return 404 (Not Found).<a href="#section-4.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="registration-update">
@@ -1903,43 +1903,46 @@ Content-Type: application/json
         <h3 id="name-query-parameters">
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-query-parameters" class="section-name selfRef">Query Parameters</a>
         </h3>
-<span class="break"></span><dl class="dlNewline" id="section-5.1-1">
-          <dt id="section-5.1-1.1">agent:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.2">
-            <p id="section-5.1-1.2.1">Filter by agent name. Trailing <code>*</code> for prefix match; exact match otherwise.<a href="#section-5.1-1.2.1" class="pilcrow">¶</a></p>
+<p id="section-5.1-1">All filters use exact match on the registered value, with one exception: <code>agent</code> and <code>cap_name</code> support a single trailing <code>*</code> as a prefix-match operator (e.g., <code>cap_name=purge*</code> matches <code>purge_by_tag</code>). The <code>*</code> character <span class="bcp14">MUST NOT</span> appear anywhere else in these values, and agent and capability names <span class="bcp14">MUST NOT</span> contain a literal <code>*</code>. The AD <span class="bcp14">MUST</span> reject registrations whose agent or capability names contain <code>*</code> with 400 (Bad Request). No other glob or regular-expression syntax is supported.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlNewline" id="section-5.1-2">
+          <dt id="section-5.1-2.1">agent:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.2">
+            <p id="section-5.1-2.2.1">Filter by agent name. Trailing <code>*</code> for prefix match; exact match otherwise.<a href="#section-5.1-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.3">protocol:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.4">
-            <p id="section-5.1-1.4.1">Filter by interaction protocol. Exact match against the agent's <code>protocols</code> array.<a href="#section-5.1-1.4.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.3">protocol:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.4">
+            <p id="section-5.1-2.4.1">Filter by interaction protocol. Matches when the given value appears in the agent's <code>protocols</code> array.<a href="#section-5.1-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.5">cap_name:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.6">
-            <p id="section-5.1-1.6.1">Filter by capability name. Returns agents having at least one matching capability. Trailing <code>*</code> for prefix match.<a href="#section-5.1-1.6.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.5">cap_name:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.6">
+            <p id="section-5.1-2.6.1">Filter by capability name. Trailing <code>*</code> for prefix match.<a href="#section-5.1-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.7">cap_type:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.8">
-            <p id="section-5.1-1.8.1">Filter by capability type (e.g., "tool", "skill"). Returns agents having at least one capability of that type.<a href="#section-5.1-1.8.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.7">cap_type:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.8">
+            <p id="section-5.1-2.8.1">Filter by capability type (e.g., "tool", "skill").<a href="#section-5.1-2.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.9">tag:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.10">
-            <p id="section-5.1-1.10.1">Filter by capability tag. Returns agents having at least one capability carrying the specified tag.<a href="#section-5.1-1.10.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.9">tag:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.10">
+            <p id="section-5.1-2.10.1">Filter by capability tag. Matches when the given value appears in any capability's <code>tags</code> array.<a href="#section-5.1-2.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.11">page:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.12">
-            <p id="section-5.1-1.12.1">Page number (zero-based). Default: 0.<a href="#section-5.1-1.12.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.11">page:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.12">
+            <p id="section-5.1-2.12.1">Page number (zero-based). Default: 0.<a href="#section-5.1-2.12.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.1-1.13">count:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.1-1.14">
-            <p id="section-5.1-1.14.1">Results per page. The AD's maximum is reported in the well-known response (<code>max_count</code>). Default: the AD's maximum.<a href="#section-5.1-1.14.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-2.13">count:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-2.14">
+            <p id="section-5.1-2.14.1">Results per page. The AD <span class="bcp14">MUST</span> clamp values exceeding the <code>max_count</code> reported in the well-known response (<a href="#discovery" class="auto internal xref">Section 3</a>) to that maximum. Default: the AD's <code>max_count</code>.<a href="#section-5.1-2.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
+<p id="section-5.1-3">When multiple <code>cap_*</code> or <code>tag</code> filters are present, the AD <span class="bcp14">MUST</span> match agents that have at least one <em>single</em> capability satisfying all <code>cap_*</code> and <code>tag</code> filters jointly. For example, <code>cap_type=tool&amp;tag=search</code> matches agents with a capability that is both typed <code>tool</code> and tagged <code>search</code>, not agents that happen to have a <code>tool</code> capability and, separately, a capability with a <code>search</code> tag.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.1-4">The AD <span class="bcp14">MUST</span> ignore unknown query parameters rather than returning an error.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="lookup-response">
@@ -1991,7 +1994,7 @@ Content-Type: application/json
 <p id="section-5.3-1">When more results exist beyond the current page, the AD includes a Link header <span>[<a href="#RFC8288" class="cite xref">RFC8288</a>]</span> with <code>rel="next"</code>:<a href="#section-5.3-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.3-2">
 <pre>
-Link: &lt;/ad/l?cap_name=purge*&amp;page=1&amp;count=50&gt;; rel="next"
+Link: &lt;/ad/l?cap_name=purge*&amp;page=1&gt;; rel="next"
 </pre><a href="#section-5.3-2" class="pilcrow">¶</a>
 </div>
 <p id="section-5.3-3">An empty <code>agents</code> array with no <code>rel="next"</code> link indicates no results or end of results.<a href="#section-5.3-3" class="pilcrow">¶</a></p>
@@ -2432,11 +2435,10 @@ Content-Type: application/problem+json
    |  (DNS-SD/config/.well-known) |                            |
    |                              |                            |
    |  2. GET /.well-known/ad ----&gt;|                            |
-   |  &lt;--- lookup interface URL   |                            |
+   |  &lt;--- lookup URI Template    |                            |
    |                              |                            |
    |  3. GET /ad/l?               |                            |
-   |     cap_name=summarize       |                            |
-   |     &amp;view=cap --------------&gt;|                            |
+   |     cap_name=summarize -----&gt;|                            |
    |  &lt;--- matching agents + base |                            |
    |                              |                            |
    |  4. Interact with agent using protocol from lookup -----&gt; |
@@ -2470,7 +2472,7 @@ Content-Type: application/json
 
 {
   "registration": "/ad/r",
-  "lookup": "/ad/l",
+  "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
   "max_count": 100
 }
 </pre><a href="#appendix-B.1-9" class="pilcrow">¶</a>
@@ -2478,24 +2480,25 @@ Content-Type: application/json
 <p id="appendix-B.1-10">In some deployments the lookup interface path is already known
 or follows a convention, in which case this step can be skipped.<a href="#appendix-B.1-10" class="pilcrow">¶</a></p>
 <p id="appendix-B.1-11">Step 3: Search for an agent with the desired capability.<a href="#appendix-B.1-11" class="pilcrow">¶</a></p>
-<p id="appendix-B.1-12">The client queries the lookup interface with <code>view=cap</code>.<a href="#appendix-B.1-12" class="pilcrow">¶</a></p>
+<p id="appendix-B.1-12">The client expands the lookup URI Template with <code>cap_name=summarize</code>.<a href="#appendix-B.1-12" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1-13">
 <pre>
-GET https://ad.example.com/ad/l?cap_name=summarize&amp;view=cap
-HTTP/1.1
+GET https://ad.example.com/ad/l?cap_name=summarize HTTP/1.1
 
 HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "capabilities": [
+  "agents": [
     {
-      "name": "summarize",
-      "type": "tool",
-      "description": "Summarize a document or text passage",
       "agent": "summarizer-v2",
       "base": "https://agents.example.com/summarizer-v2",
+      "description": "Summarizes documents and extracts named entities",
       "protocols": ["a2a"],
+      "capabilities": [
+        {"name": "summarize", "type": "tool"},
+        {"name": "extract_entities", "type": "tool"}
+      ],
       "href": "/ad/r/4521"
     }
   ]
@@ -2631,57 +2634,60 @@ Content-Type: application/json
         <h3 id="name-filtered-lookup-with-pagina">
 <a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-filtered-lookup-with-pagina" class="section-name selfRef">Filtered Lookup with Pagination</a>
         </h3>
-<p id="appendix-B.3-1">A client enumerates MCP tool capabilities in pages of two.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-1">A client enumerates MCP agents that expose tool capabilities, one per page.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.3-2">
 <pre>
-GET /ad/l?protocol=mcp&amp;cap_type=tool&amp;view=cap&amp;count=2&amp;page=0 HTTP/1.1
+GET /ad/l?protocol=mcp&amp;cap_type=tool&amp;count=1&amp;page=0 HTTP/1.1
 Host: ad.example.com
 Accept: application/json
 
 HTTP/1.1 200 OK
 Content-Type: application/json
+Link: &lt;/ad/l?protocol=mcp&amp;cap_type=tool&amp;count=1&amp;page=1&gt;; rel="next"
 
 {
-  "capabilities": [
+  "agents": [
     {
-      "name": "classify_ticket",
-      "type": "tool",
       "agent": "ticket-classifier",
       "base": "https://agents.example.com/ticket-classifier",
+      "description": "Classifies incoming support tickets.",
       "protocols": ["mcp"],
-      "href": "/ad/r/201"
-    },
-    {
-      "name": "suggest_priority",
-      "type": "tool",
-      "agent": "ticket-classifier",
-      "base": "https://agents.example.com/ticket-classifier",
-      "protocols": ["mcp"],
+      "capabilities": [
+        {"name": "classify_ticket", "type": "tool"},
+        {"name": "suggest_priority", "type": "tool"}
+      ],
       "href": "/ad/r/201"
     }
   ]
 }
-
-GET /ad/l?protocol=mcp&amp;cap_type=tool&amp;view=cap&amp;count=2&amp;page=1 HTTP/1.1
+</pre><a href="#appendix-B.3-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.3-3">The client follows the <code>rel="next"</code> link:<a href="#appendix-B.3-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.3-4">
+<pre>
+GET /ad/l?protocol=mcp&amp;cap_type=tool&amp;count=1&amp;page=1 HTTP/1.1
 Host: ad.example.com
 
 HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "capabilities": [
+  "agents": [
     {
-      "name": "search_kb",
-      "type": "tool",
       "agent": "knowledge-lookup",
       "base": "https://agents.example.com/kb",
+      "description": "Searches internal knowledge base.",
       "protocols": ["mcp"],
+      "capabilities": [
+        {"name": "search_kb", "type": "tool"}
+      ],
       "href": "/ad/r/202"
     }
   ]
 }
-</pre><a href="#appendix-B.3-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.3-4" class="pilcrow">¶</a>
 </div>
+<p id="appendix-B.3-5">No <code>Link: rel="next"</code> header is present, indicating the end of results.<a href="#appendix-B.3-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="registration-conflict">
@@ -2779,7 +2785,7 @@ to use this information as they see fit".<a href="#appendix-D-3" class="pilcrow"
           <dd class="break"></dd>
 <dt id="appendix-D.1-1.9">Coverage:</dt>
           <dd style="margin-left: 1.5em" id="appendix-D.1-1.10">
-            <p id="appendix-D.1-1.10.1">All features specified in this document: well-known URI discovery, agent registration (create, update, replace, delete), agent lookup with filtering and pagination, capability lookup with filtering and pagination, soft-state expiry, and RFC 9457 error responses.<a href="#appendix-D.1-1.10.1" class="pilcrow">¶</a></p>
+            <p id="appendix-D.1-1.10.1">All features specified in this document: well-known URI discovery (URI Template lookup), agent registration (create, update, replace, delete), agent lookup with filtering and Link-header pagination, soft-state expiry, and RFC 9457 error responses.<a href="#appendix-D.1-1.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="appendix-D.1-1.11">Version Compatibility:</dt>
@@ -2863,13 +2869,13 @@ to use this information as they see fit".<a href="#appendix-D-3" class="pilcrow"
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Resource lookup</td>
-            <td class="text-left" rowspan="1" colspan="1">Lookup view=cap (GET /ad/l?view=cap)</td>
-            <td class="text-left" rowspan="1" colspan="1">Structured query instead of link-format filter</td>
+            <td class="text-left" rowspan="1" colspan="1">Capabilities embedded in agent registration</td>
+            <td class="text-left" rowspan="1" colspan="1">Capabilities are nested in the registration, not independent resources</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Endpoint lookup</td>
-            <td class="text-left" rowspan="1" colspan="1">Lookup view=agent (GET /ad/l)</td>
-            <td class="text-left" rowspan="1" colspan="1">Same pattern, unified endpoint</td>
+            <td class="text-left" rowspan="1" colspan="1">GET on the lookup endpoint</td>
+            <td class="text-left" rowspan="1" colspan="1">Structured filters instead of link-format query</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Commissioning Tool (CT)</td>

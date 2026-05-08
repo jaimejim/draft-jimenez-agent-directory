@@ -164,23 +164,24 @@ Table of Contents
    This document specifies the Agent Directory (AD).  The core mapping
    to CoRE RD concepts is:
 
-      +=======================+====================================+
-      | CoRE RD Concept       | AD Equivalent                      |
-      +=======================+====================================+
-      | Endpoint (EP)         | Agent                              |
-      +-----------------------+------------------------------------+
-      | Resource link         | Capability / tool description      |
-      +-----------------------+------------------------------------+
-      | Registration resource | Agent registration resource        |
-      +-----------------------+------------------------------------+
-      | Endpoint lookup       | Lookup, agent view (view=agent)    |
-      +-----------------------+------------------------------------+
-      | Resource lookup       | Lookup, capability view (view=cap) |
-      +-----------------------+------------------------------------+
-      | Lifetime (lt)         | Registration lifetime              |
-      +-----------------------+------------------------------------+
+      +=======================+=====================================+
+      | CoRE RD Concept       | AD Equivalent                       |
+      +=======================+=====================================+
+      | Endpoint (EP)         | Agent                               |
+      +-----------------------+-------------------------------------+
+      | Resource link         | Capability / tool description       |
+      +-----------------------+-------------------------------------+
+      | Registration resource | Agent registration resource         |
+      +-----------------------+-------------------------------------+
+      | Endpoint lookup       | Lookup (GET on the lookup endpoint) |
+      +-----------------------+-------------------------------------+
+      | Resource lookup       | Capabilities embedded in the agent  |
+      |                       | registration                        |
+      +-----------------------+-------------------------------------+
+      | Lifetime (lt)         | Registration lifetime               |
+      +-----------------------+-------------------------------------+
 
-                                 Table 1
+                                  Table 1
 
    Agents register with the AD by sending a POST request with a JSON
    document describing their capabilities.  Registrations are soft state
@@ -579,8 +580,8 @@ Table of Contents
 
    The response includes the full registration content, including
    capability details (description, schemas) that are omitted from
-   lookup results with view=agent.  If the registration resource does
-   not exist, the AD MUST return 404 (Not Found).
+   lookup results (Section 5.2).  If the registration resource does not
+   exist, the AD MUST return 404 (Not Found).
 
 4.4.  Registration Update
 
@@ -666,32 +667,50 @@ Content-Type: application/json
 
 5.1.  Query Parameters
 
+   All filters use exact match on the registered value, with one
+   exception: agent and cap_name support a single trailing * as a
+   prefix-match operator (e.g., cap_name=purge* matches purge_by_tag).
+   The * character MUST NOT appear anywhere else in these values, and
+   agent and capability names MUST NOT contain a literal *. The AD MUST
+   reject registrations whose agent or capability names contain * with
+   400 (Bad Request).  No other glob or regular-expression syntax is
+   supported.
+
    agent:
       Filter by agent name.  Trailing * for prefix match; exact match
       otherwise.
 
    protocol:
-      Filter by interaction protocol.  Exact match against the agent's
-      protocols array.
+      Filter by interaction protocol.  Matches when the given value
+      appears in the agent's protocols array.
 
    cap_name:
-      Filter by capability name.  Returns agents having at least one
-      matching capability.  Trailing * for prefix match.
+      Filter by capability name.  Trailing * for prefix match.
 
    cap_type:
-      Filter by capability type (e.g., "tool", "skill").  Returns agents
-      having at least one capability of that type.
+      Filter by capability type (e.g., "tool", "skill").
 
    tag:
-      Filter by capability tag.  Returns agents having at least one
-      capability carrying the specified tag.
+      Filter by capability tag.  Matches when the given value appears in
+      any capability's tags array.
 
    page:
       Page number (zero-based).  Default: 0.
 
    count:
-      Results per page.  The AD's maximum is reported in the well-known
-      response (max_count).  Default: the AD's maximum.
+      Results per page.  The AD MUST clamp values exceeding the
+      max_count reported in the well-known response (Section 3) to that
+      maximum.  Default: the AD's max_count.
+
+   When multiple cap_* or tag filters are present, the AD MUST match
+   agents that have at least one _single_ capability satisfying all
+   cap_* and tag filters jointly.  For example, cap_type=tool&tag=search
+   matches agents with a capability that is both typed tool and tagged
+   search, not agents that happen to have a tool capability and,
+   separately, a capability with a search tag.
+
+   The AD MUST ignore unknown query parameters rather than returning an
+   error.
 
 5.2.  Lookup Response
 
@@ -728,7 +747,7 @@ Content-Type: application/json
    When more results exist beyond the current page, the AD includes a
    Link header [RFC8288] with rel="next":
 
-   Link: </ad/l?cap_name=purge*&page=1&count=50>; rel="next"
+   Link: </ad/l?cap_name=purge*&page=1>; rel="next"
 
    An empty agents array with no rel="next" link indicates no results or
    end of results.
@@ -1187,11 +1206,10 @@ B.1.  Discovery Flow
         |  (DNS-SD/config/.well-known) |                            |
         |                              |                            |
         |  2. GET /.well-known/ad ---->|                            |
-        |  <--- lookup interface URL   |                            |
+        |  <--- lookup URI Template    |                            |
         |                              |                            |
         |  3. GET /ad/l?               |                            |
-        |     cap_name=summarize       |                            |
-        |     &view=cap -------------->|                            |
+        |     cap_name=summarize ----->|                            |
         |  <--- matching agents + base |                            |
         |                              |                            |
         |  4. Interact with agent using protocol from lookup -----> |
@@ -1215,43 +1233,44 @@ B.1.  Discovery Flow
    The client queries the well-known endpoint to learn the available
    interfaces.
 
-   GET https://ad.example.com/.well-known/ad HTTP/1.1
+  GET https://ad.example.com/.well-known/ad HTTP/1.1
 
-   HTTP/1.1 200 OK
-   Content-Type: application/json
+  HTTP/1.1 200 OK
+  Content-Type: application/json
 
-   {
-     "registration": "/ad/r",
-     "lookup": "/ad/l",
-     "max_count": 100
-   }
+  {
+    "registration": "/ad/r",
+    "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
+    "max_count": 100
+  }
 
    In some deployments the lookup interface path is already known or
    follows a convention, in which case this step can be skipped.
 
    Step 3: Search for an agent with the desired capability.
 
-   The client queries the lookup interface with view=cap.
+   The client expands the lookup URI Template with cap_name=summarize.
 
-   GET https://ad.example.com/ad/l?cap_name=summarize&view=cap
-   HTTP/1.1
+GET https://ad.example.com/ad/l?cap_name=summarize HTTP/1.1
 
-   HTTP/1.1 200 OK
-   Content-Type: application/json
+HTTP/1.1 200 OK
+Content-Type: application/json
 
-   {
-     "capabilities": [
-       {
-         "name": "summarize",
-         "type": "tool",
-         "description": "Summarize a document or text passage",
-         "agent": "summarizer-v2",
-         "base": "https://agents.example.com/summarizer-v2",
-         "protocols": ["a2a"],
-         "href": "/ad/r/4521"
-       }
-     ]
-   }
+{
+  "agents": [
+    {
+      "agent": "summarizer-v2",
+      "base": "https://agents.example.com/summarizer-v2",
+      "description": "Summarizes documents and extracts named entities",
+      "protocols": ["a2a"],
+      "capabilities": [
+        {"name": "summarize", "type": "tool"},
+        {"name": "extract_entities", "type": "tool"}
+      ],
+      "href": "/ad/r/4521"
+    }
+  ]
+}
 
    The response includes the agent's base URI and supported protocols,
    giving the client enough information to contact the agent directly.
@@ -1369,54 +1388,57 @@ B.2.  Enterprise Agent Portfolio
 
 B.3.  Filtered Lookup with Pagination
 
-   A client enumerates MCP tool capabilities in pages of two.
+   A client enumerates MCP agents that expose tool capabilities, one per
+   page.
 
-   GET /ad/l?protocol=mcp&cap_type=tool&view=cap&count=2&page=0 HTTP/1.1
+   GET /ad/l?protocol=mcp&cap_type=tool&count=1&page=0 HTTP/1.1
    Host: ad.example.com
    Accept: application/json
 
    HTTP/1.1 200 OK
    Content-Type: application/json
+   Link: </ad/l?protocol=mcp&cap_type=tool&count=1&page=1>; rel="next"
 
    {
-     "capabilities": [
+     "agents": [
        {
-         "name": "classify_ticket",
-         "type": "tool",
          "agent": "ticket-classifier",
          "base": "https://agents.example.com/ticket-classifier",
+         "description": "Classifies incoming support tickets.",
          "protocols": ["mcp"],
-         "href": "/ad/r/201"
-       },
-       {
-         "name": "suggest_priority",
-         "type": "tool",
-         "agent": "ticket-classifier",
-         "base": "https://agents.example.com/ticket-classifier",
-         "protocols": ["mcp"],
+         "capabilities": [
+           {"name": "classify_ticket", "type": "tool"},
+           {"name": "suggest_priority", "type": "tool"}
+         ],
          "href": "/ad/r/201"
        }
      ]
    }
 
-   GET /ad/l?protocol=mcp&cap_type=tool&view=cap&count=2&page=1 HTTP/1.1
+   The client follows the rel="next" link:
+
+   GET /ad/l?protocol=mcp&cap_type=tool&count=1&page=1 HTTP/1.1
    Host: ad.example.com
 
    HTTP/1.1 200 OK
    Content-Type: application/json
 
    {
-     "capabilities": [
+     "agents": [
        {
-         "name": "search_kb",
-         "type": "tool",
          "agent": "knowledge-lookup",
          "base": "https://agents.example.com/kb",
+         "description": "Searches internal knowledge base.",
          "protocols": ["mcp"],
+         "capabilities": [
+           {"name": "search_kb", "type": "tool"}
+         ],
          "href": "/ad/r/202"
        }
      ]
    }
+
+   No Link: rel="next" header is present, indicating the end of results.
 
 B.4.  Registration Conflict
 
@@ -1495,9 +1517,9 @@ D.1.  ad.jaime.win
    Level of Maturity:  Prototype
 
    Coverage:  All features specified in this document: well-known URI
-      discovery, agent registration (create, update, replace, delete),
-      agent lookup with filtering and pagination, capability lookup with
-      filtering and pagination, soft-state expiry, and RFC 9457 error
+      discovery (URI Template lookup), agent registration (create,
+      update, replace, delete), agent lookup with filtering and Link-
+      header pagination, soft-state expiry, and RFC 9457 error
       responses.
 
    Version Compatibility:  draft-jimenez-agent-directory-00
@@ -1517,45 +1539,47 @@ Appendix F.  Mapping from CoRE RD to AD
    The following table summarizes the conceptual mapping between CoRE RD
    concepts and their AD equivalents.
 
-    +===============+======================+==========================+
-    | CoRE RD (RFC  | AD                   | Notes                    |
-    | 9176)         |                      |                          |
-    +===============+======================+==========================+
-    | Endpoint (EP) | Agent                | Software entity that     |
-    |               |                      | registers                |
-    +---------------+----------------------+--------------------------+
-    | Resource link | Capability           | Structured JSON instead  |
-    |               |                      | of link-format           |
-    +---------------+----------------------+--------------------------+
-    | /.well-known/ | /.well-known/ad      | Discovery entry point    |
-    | core          |                      |                          |
-    +---------------+----------------------+--------------------------+
-    | Registration  | Registration (POST   | Same soft-state model    |
-    | (POST /rd)    | /ad/r)               |                          |
-    +---------------+----------------------+--------------------------+
-    | Registration  | Registration         | Same lifecycle           |
-    | resource      | resource             |                          |
-    +---------------+----------------------+--------------------------+
-    | Lifetime (lt) | Lifetime (lt)        | Same semantics,          |
-    |               |                      | different default        |
-    +---------------+----------------------+--------------------------+
-    | Endpoint name | Agent name (agent)   | Same uniqueness          |
-    | (ep)          |                      | constraint               |
-    +---------------+----------------------+--------------------------+
-    | Resource      | Lookup view=cap (GET | Structured query instead |
-    | lookup        | /ad/l?view=cap)      | of link-format filter    |
-    +---------------+----------------------+--------------------------+
-    | Endpoint      | Lookup view=agent    | Same pattern, unified    |
-    | lookup        | (GET /ad/l)          | endpoint                 |
-    +---------------+----------------------+--------------------------+
-    | Commissioning | Commissioning Tool   | Third-party registration |
-    | Tool (CT)     | (CT)                 |                          |
-    +---------------+----------------------+--------------------------+
-    | application/  | application/json     | Representation format    |
-    | link-format   |                      |                          |
-    +---------------+----------------------+--------------------------+
+   +===============+=======================+==========================+
+   | CoRE RD (RFC  | AD                    | Notes                    |
+   | 9176)         |                       |                          |
+   +===============+=======================+==========================+
+   | Endpoint (EP) | Agent                 | Software entity that     |
+   |               |                       | registers                |
+   +---------------+-----------------------+--------------------------+
+   | Resource link | Capability            | Structured JSON instead  |
+   |               |                       | of link-format           |
+   +---------------+-----------------------+--------------------------+
+   | /.well-known/ | /.well-known/ad       | Discovery entry point    |
+   | core          |                       |                          |
+   +---------------+-----------------------+--------------------------+
+   | Registration  | Registration (POST    | Same soft-state model    |
+   | (POST /rd)    | /ad/r)                |                          |
+   +---------------+-----------------------+--------------------------+
+   | Registration  | Registration resource | Same lifecycle           |
+   | resource      |                       |                          |
+   +---------------+-----------------------+--------------------------+
+   | Lifetime (lt) | Lifetime (lt)         | Same semantics,          |
+   |               |                       | different default        |
+   +---------------+-----------------------+--------------------------+
+   | Endpoint name | Agent name (agent)    | Same uniqueness          |
+   | (ep)          |                       | constraint               |
+   +---------------+-----------------------+--------------------------+
+   | Resource      | Capabilities embedded | Capabilities are nested  |
+   | lookup        | in agent registration | in the registration, not |
+   |               |                       | independent resources    |
+   +---------------+-----------------------+--------------------------+
+   | Endpoint      | GET on the lookup     | Structured filters       |
+   | lookup        | endpoint              | instead of link-format   |
+   |               |                       | query                    |
+   +---------------+-----------------------+--------------------------+
+   | Commissioning | Commissioning Tool    | Third-party registration |
+   | Tool (CT)     | (CT)                  |                          |
+   +---------------+-----------------------+--------------------------+
+   | application/  | application/json      | Representation format    |
+   | link-format   |                       |                          |
+   +---------------+-----------------------+--------------------------+
 
-                                  Table 2
+                                 Table 2
 
 Author's Address
 
