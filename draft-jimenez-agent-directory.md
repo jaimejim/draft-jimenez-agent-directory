@@ -8,7 +8,6 @@ docname: draft-jimenez-agent-directory-latest
 category: std
 stream: IETF
 area: Applications
-workgroup: DAWN
 
 venue:
   mail: TBD
@@ -21,7 +20,9 @@ author:
 
 normative:
   RFC3986:
+  RFC6570:
   RFC6750:
+  RFC8288:
   RFC8615:
   RFC9110:
   RFC9176:
@@ -189,7 +190,7 @@ registration:
 : (string, REQUIRED) Path to the registration endpoint.
 
 lookup:
-: (string, REQUIRED) Path to the lookup endpoint.
+: (string, REQUIRED) URI Template {{RFC6570}} for the lookup endpoint. The template variables indicate the supported query parameters.
 
 max_count:
 : (integer, REQUIRED) Maximum value the AD accepts for the `count` pagination parameter.
@@ -204,7 +205,7 @@ Example:
 
     {
       "registration": "/ad/r",
-      "lookup": "/ad/l",
+      "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
       "max_count": 100
     }
 
@@ -410,14 +411,9 @@ The AD MUST automatically remove a registration when its lifetime elapses withou
 
 # Lookup {#lookup}
 
-The AD provides a single unified lookup endpoint. The `view` query parameter controls how results are grouped:
+The AD provides a lookup endpoint for discovering registered agents. The lookup endpoint URI is obtained from the well-known response ({{discovery}}). All query parameters act as conjunctive filters: only agents matching all specified criteria are returned. A request with no filters returns all agents visible to the requesting client.
 
-* `view=agent` (default): returns a list of registered agents matching the query, with capability summaries.
-* `view=cap`: returns a list of individual capabilities across all matching agents.
-
-## Agent View {#agent-view}
-
-    GET /ad/l HTTP/1.1
+    GET /ad/l?cap_name=purge* HTTP/1.1
     Host: directory.example.com
     Accept: application/json
 
@@ -427,96 +423,75 @@ The AD provides a single unified lookup endpoint. The `view` query parameter con
     {
       "agents": [
         {
-          "agent": "summarizer-v2",
-          "base": "https://agents.example.com/summarizer-v2",
-          "description": "Summarizes documents and extracts named entities",
+          "agent": "cdn-cache-manager",
+          "base": "https://agents.example.com/cdn-cache-manager",
+          "description": "Manages CDN cache invalidation and prefetch policies",
           "protocols": ["a2a"],
           "capabilities": [
-            {"name": "summarize", "type": "tool"},
-            {"name": "extract_entities", "type": "tool"}
+            {"name": "purge_by_tag", "type": "tool"},
+            {"name": "prefetch_origins", "type": "tool"}
           ],
           "href": "/ad/r/4521"
-        },
-        {
-          "agent": "citation-finder",
-          "base": "https://agents.example.com/citation-finder",
-          "description": "Finds and verifies academic citations",
-          "protocols": ["mcp"],
-          "capabilities": [
-            {"name": "find_citations", "type": "tool"},
-            {"name": "check_references", "type": "tool"}
-          ],
-          "href": "/ad/r/4522"
         }
       ]
     }
-
-Agent view returns capability summary objects (name and type only). Full capability details (description, schemas) are omitted to keep lookup responses compact. Clients that need the full registration SHOULD retrieve the individual registration resource (GET /ad/r/{id}). This two-step pattern mirrors the RD's separation between endpoint lookup and resource lookup.
-
-## Capability View {#capability-view}
-
-Capability view returns individual capabilities with their owning agent's information. Clients use this view to find specific tools or skills across all registered agents.
-
-    GET /ad/l?cap_name=summarize&view=cap HTTP/1.1
-    Host: directory.example.com
-    Accept: application/json
-
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-
-    {
-      "capabilities": [
-        {
-          "name": "summarize",
-          "type": "tool",
-          "description": "Summarize a document or text passage",
-          "agent": "summarizer-v2",
-          "base": "https://agents.example.com/summarizer-v2",
-          "protocols": ["a2a"],
-          "href": "/ad/r/4521"
-        },
-        {
-          "name": "summarize_meeting",
-          "type": "tool",
-          "description": "Summarize meeting transcripts",
-          "agent": "meeting-assistant",
-          "base": "https://agents.example.com/meeting-bot",
-          "protocols": ["mcp"],
-          "href": "/ad/r/4523"
-        }
-      ]
-    }
-
-Each capability object in the response includes: "name", "type", "description" (if registered), the owning agent's "agent", "base", "protocols", and "href" (the registration resource URI). Clients can use "href" to retrieve the full registration.
 
 ## Query Parameters {#lookup-params}
 
-All query parameters are OPTIONAL and act as filters. When multiple filter parameters are present, the AD MUST AND them: only entries matching all specified filters are returned. A request with no filter parameters returns all registrations visible to the requesting client.
+{:vspace}
+agent:
+: Filter by agent name. Trailing `*` for prefix match; exact match otherwise.
+
+protocol:
+: Filter by interaction protocol. Exact match against the agent's `protocols` array.
+
+cap_name:
+: Filter by capability name. Returns agents having at least one matching capability. Trailing `*` for prefix match.
+
+cap_type:
+: Filter by capability type (e.g., "tool", "skill"). Returns agents having at least one capability of that type.
+
+tag:
+: Filter by capability tag. Returns agents having at least one capability carrying the specified tag.
+
+page:
+: Page number (zero-based). Default: 0.
+
+count:
+: Results per page. The AD's maximum is reported in the well-known response (`max_count`). Default: the AD's maximum.
+
+## Lookup Response {#lookup-response}
+
+Each object in the `agents` array contains:
 
 {:vspace}
 agent:
-: Filter by agent name. A trailing asterisk (*) matches any suffix (e.g., `agent=sum*` matches "summarizer" and "summary-bot"). Without an asterisk, the value MUST match exactly. Wildcard matching is only supported for the `agent` and `cap_name` parameters.
+: The registered agent name.
 
-protocol:
-: Filter by supported interaction protocol. Exact match.
+base:
+: The agent's base URI.
 
-cap_name:
-: Filter by capability name. Trailing asterisk (*) for prefix match; exact match otherwise.
+description:
+: The agent's description, if registered.
 
-cap_type:
-: Filter by capability type (e.g., "tool", "skill"). Exact match.
+protocols:
+: Interaction protocols the agent supports.
 
-tag:
-: Filter by capability tag. Returns agents (or capabilities) that have at least one capability carrying the specified tag. Exact match. In agent view, the full agent with all its capabilities is returned if any capability matches.
+capabilities:
+: An array of capability summary objects, each with "name" and "type". Full details (descriptions, schemas, tags) are omitted to keep responses compact.
 
-view:
-: Result grouping. "agent" (default) groups results by agent; "cap" groups results by individual capability. If omitted, the AD MUST use "agent".
+href:
+: The registration resource URI. Clients retrieve the full registration by sending GET to this URI ({{registration-read}}).
 
-page:
-: Page number (zero-based) for pagination. Default: 0.
+This two-step pattern mirrors the RD's separation between endpoint lookup and resource lookup {{RFC9176}}: the lookup returns compact summaries with pointers; the client dereferences the pointer for full details.
 
-count:
-: Maximum number of results per page. Default: 100. The AD MAY enforce a lower maximum and MUST document its limit in the well-known response.
+## Pagination {#pagination}
+
+When more results exist beyond the current page, the AD includes a Link header {{RFC8288}} with `rel="next"`:
+
+    Link: </ad/l?cap_name=purge*&page=1&count=50>; rel="next"
+
+An empty `agents` array with no `rel="next"` link indicates no results or end of results.
 
 # Error Responses {#errors}
 
@@ -683,7 +658,7 @@ Discovering an agent through the AD involves four steps: locating the directory,
  Client                          AD                         Agent
    |                              |                            |
    |  1. Obtain AD URL            |                            |
-   |  (DNS-SD/config/.well-known)  |                            |
+   |  (DNS-SD/config/.well-known) |                            |
    |                              |                            |
    |  2. GET /.well-known/ad ---->|                            |
    |  <--- lookup interface URL   |                            |
