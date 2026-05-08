@@ -641,7 +641,7 @@ Table of Contents
    agents matching all specified criteria are returned.  A request with
    no filters returns all agents visible to the requesting client.
 
-GET /ad/l?cap_name=summarize HTTP/1.1
+GET /ad/l?cap_name=purge* HTTP/1.1
 Host: directory.example.com
 Accept: application/json
 
@@ -651,13 +651,13 @@ Content-Type: application/json
 {
   "agents": [
     {
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
-      "description": "Summarizes documents and extracts named entities",
+      "agent": "cdn-cache-manager",
+      "base": "https://agents.example.com/cdn-cache-manager",
+      "description": "Manages CDN cache invalidation and prefetch policies",
       "protocols": ["a2a"],
       "capabilities": [
-        {"name": "summarize", "type": "tool"},
-        {"name": "extract_entities", "type": "tool"}
+        {"name": "purge_by_tag", "type": "tool"},
+        {"name": "prefetch_origins", "type": "tool"}
       ],
       "href": "/ad/r/4521"
     }
@@ -728,7 +728,7 @@ Content-Type: application/json
    When more results exist beyond the current page, the AD includes a
    Link header [RFC8288] with rel="next":
 
-   Link: </ad/l?cap_name=summarize&page=1&count=50>; rel="next"
+   Link: </ad/l?cap_name=purge*&page=1&count=50>; rel="next"
 
    An empty agents array with no rel="next" link indicates no results or
    end of results.

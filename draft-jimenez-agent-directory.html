@@ -1874,7 +1874,7 @@ HTTP/1.1 204 No Content
 <p id="section-5-1">The AD provides a lookup endpoint for discovering registered agents. The lookup endpoint URI is obtained from the well-known response (<a href="#discovery" class="auto internal xref">Section 3</a>). All query parameters act as conjunctive filters: only agents matching all specified criteria are returned. A request with no filters returns all agents visible to the requesting client.<a href="#section-5-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5-2">
 <pre>
-GET /ad/l?cap_name=summarize HTTP/1.1
+GET /ad/l?cap_name=purge* HTTP/1.1
 Host: directory.example.com
 Accept: application/json
 
@@ -1884,13 +1884,13 @@ Content-Type: application/json
 {
   "agents": [
     {
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
-      "description": "Summarizes documents and extracts named entities",
+      "agent": "cdn-cache-manager",
+      "base": "https://agents.example.com/cdn-cache-manager",
+      "description": "Manages CDN cache invalidation and prefetch policies",
       "protocols": ["a2a"],
       "capabilities": [
-        {"name": "summarize", "type": "tool"},
-        {"name": "extract_entities", "type": "tool"}
+        {"name": "purge_by_tag", "type": "tool"},
+        {"name": "prefetch_origins", "type": "tool"}
       ],
       "href": "/ad/r/4521"
     }
@@ -1991,7 +1991,7 @@ Content-Type: application/json
 <p id="section-5.3-1">When more results exist beyond the current page, the AD includes a Link header <span>[<a href="#RFC8288" class="cite xref">RFC8288</a>]</span> with <code>rel="next"</code>:<a href="#section-5.3-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.3-2">
 <pre>
-Link: &lt;/ad/l?cap_name=summarize&amp;page=1&amp;count=50&gt;; rel="next"
+Link: &lt;/ad/l?cap_name=purge*&amp;page=1&amp;count=50&gt;; rel="next"
 </pre><a href="#section-5.3-2" class="pilcrow">¶</a>
 </div>
 <p id="section-5.3-3">An empty <code>agents</code> array with no <code>rel="next"</code> link indicates no results or end of results.<a href="#section-5.3-3" class="pilcrow">¶</a></p>
