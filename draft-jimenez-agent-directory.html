@@ -1884,13 +1884,13 @@ Content-Type: application/json
 {
   "agents": [
     {
-      "agent": "document-analyst",
-      "base": "https://agents.example.com/document-analyst",
-      "description": "Analyzes documents, extracts key clauses and obligations",
+      "agent": "network-inventory",
+      "base": "https://agents.example.com/network-inventory",
+      "description": "Queries and reconciles network device inventory",
       "protocols": ["a2a"],
       "capabilities": [
-        {"name": "extract_clauses", "type": "skill"},
-        {"name": "summarize_document", "type": "skill"}
+        {"name": "query_devices", "type": "skill"},
+        {"name": "detect_drift", "type": "skill"}
       ],
       "href": "/ad/r/4521"
     }
