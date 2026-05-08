@@ -2,10 +2,10 @@
 
 
 
-DAWN                                                          J. Jimenez
+Network Working Group                                         J. Jimenez
 Internet-Draft                                                  Ericsson
-Intended status: Standards Track                              7 May 2026
-Expires: 8 November 2026
+Intended status: Standards Track                              8 May 2026
+Expires: 9 November 2026
 
 
                             Agent Directory
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 8 November 2026.
+   This Internet-Draft will expire on 9 November 2026.
 
 Copyright Notice
 
@@ -83,9 +83,9 @@ Table of Contents
      4.4.  Registration Update
      4.5.  Registration Removal
    5.  Lookup
-     5.1.  Agent View
-     5.2.  Capability View
-     5.3.  Query Parameters
+     5.1.  Query Parameters
+     5.2.  Lookup Response
+     5.3.  Pagination
    6.  Error Responses
    7.  Security Policies
      7.1.  Agent Name and Registration Ownership
@@ -324,7 +324,8 @@ Table of Contents
       (string, REQUIRED) Path to the registration endpoint.
 
    lookup:
-      (string, REQUIRED) Path to the lookup endpoint.
+      (string, REQUIRED) URI Template [RFC6570] for the lookup endpoint.
+      The template variables indicate the supported query parameters.
 
    max_count:
       (integer, REQUIRED) Maximum value the AD accepts for the count
@@ -332,17 +333,17 @@ Table of Contents
 
    Example:
 
-   GET /.well-known/ad HTTP/1.1
-   Host: directory.example.com
+  GET /.well-known/ad HTTP/1.1
+  Host: directory.example.com
 
-   HTTP/1.1 200 OK
-   Content-Type: application/json
+  HTTP/1.1 200 OK
+  Content-Type: application/json
 
-   {
-     "registration": "/ad/r",
-     "lookup": "/ad/l",
-     "max_count": 100
-   }
+  {
+    "registration": "/ad/r",
+    "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
+    "max_count": 100
+  }
 
 3.2.  DNS-SD
 
@@ -634,18 +635,13 @@ Table of Contents
 
 5.  Lookup
 
-   The AD provides a single unified lookup endpoint.  The view query
-   parameter controls how results are grouped:
+   The AD provides a lookup endpoint for discovering registered agents.
+   The lookup endpoint URI is obtained from the well-known response
+   (Section 3).  All query parameters act as conjunctive filters: only
+   agents matching all specified criteria are returned.  A request with
+   no filters returns all agents visible to the requesting client.
 
-   *  view=agent (default): returns a list of registered agents matching
-      the query, with capability summaries.
-
-   *  view=cap: returns a list of individual capabilities across all
-      matching agents.
-
-5.1.  Agent View
-
-GET /ad/l HTTP/1.1
+GET /ad/l?cap_name=summarize&protocol=a2a HTTP/1.1
 Host: directory.example.com
 Accept: application/json
 
@@ -659,116 +655,79 @@ Content-Type: application/json
       "base": "https://agents.example.com/summarizer-v2",
       "description": "Summarizes documents and extracts named entities",
       "protocols": ["a2a"],
-      "capabilities": [
-        {"name": "summarize", "type": "tool"},
-        {"name": "extract_entities", "type": "tool"}
-      ],
+      "capabilities": ["summarize", "extract_entities"],
       "href": "/ad/r/4521"
-    },
-    {
-      "agent": "citation-finder",
-      "base": "https://agents.example.com/citation-finder",
-      "description": "Finds and verifies academic citations",
-      "protocols": ["mcp"],
-      "capabilities": [
-        {"name": "find_citations", "type": "tool"},
-        {"name": "check_references", "type": "tool"}
-      ],
-      "href": "/ad/r/4522"
     }
   ]
 }
 
-   Agent view returns capability summary objects (name and type only).
-   Full capability details (description, schemas) are omitted to keep
-   lookup responses compact.  Clients that need the full registration
-   SHOULD retrieve the individual registration resource (GET /ad/
-   r/{id}).  This two-step pattern mirrors the RD's separation between
-   endpoint lookup and resource lookup.
-
-5.2.  Capability View
-
-   Capability view returns individual capabilities with their owning
-   agent's information.  Clients use this view to find specific tools or
-   skills across all registered agents.
-
-   GET /ad/l?cap_name=summarize&view=cap HTTP/1.1
-   Host: directory.example.com
-   Accept: application/json
-
-   HTTP/1.1 200 OK
-   Content-Type: application/json
-
-   {
-     "capabilities": [
-       {
-         "name": "summarize",
-         "type": "tool",
-         "description": "Summarize a document or text passage",
-         "agent": "summarizer-v2",
-         "base": "https://agents.example.com/summarizer-v2",
-         "protocols": ["a2a"],
-         "href": "/ad/r/4521"
-       },
-       {
-         "name": "summarize_meeting",
-         "type": "tool",
-         "description": "Summarize meeting transcripts",
-         "agent": "meeting-assistant",
-         "base": "https://agents.example.com/meeting-bot",
-         "protocols": ["mcp"],
-         "href": "/ad/r/4523"
-       }
-     ]
-   }
-
-   Each capability object in the response includes: "name", "type",
-   "description" (if registered), the owning agent's "agent", "base",
-   "protocols", and "href" (the registration resource URI).  Clients can
-   use "href" to retrieve the full registration.
-
-5.3.  Query Parameters
-
-   All query parameters are OPTIONAL and act as filters.  When multiple
-   filter parameters are present, the AD MUST AND them: only entries
-   matching all specified filters are returned.  A request with no
-   filter parameters returns all registrations visible to the requesting
-   client.
+5.1.  Query Parameters
 
    agent:
-      Filter by agent name.  A trailing asterisk (*) matches any suffix
-      (e.g., agent=sum* matches "summarizer" and "summary-bot").
-      Without an asterisk, the value MUST match exactly.  Wildcard
-      matching is only supported for the agent and cap_name parameters.
+      Filter by agent name.  Trailing * for prefix match; exact match
+      otherwise.
 
    protocol:
-      Filter by supported interaction protocol.  Exact match.
+      Filter by interaction protocol.  Exact match against the agent's
+      protocols array.
 
    cap_name:
-      Filter by capability name.  Trailing asterisk (*) for prefix
-      match; exact match otherwise.
+      Filter by capability name.  Returns agents having at least one
+      matching capability.  Trailing * for prefix match.
 
    cap_type:
-      Filter by capability type (e.g., "tool", "skill").  Exact match.
+      Filter by capability type (e.g., "tool", "skill").  Returns agents
+      having at least one capability of that type.
 
    tag:
-      Filter by capability tag.  Returns agents (or capabilities) that
-      have at least one capability carrying the specified tag.  Exact
-      match.  In agent view, the full agent with all its capabilities is
-      returned if any capability matches.
-
-   view:
-      Result grouping. "agent" (default) groups results by agent; "cap"
-      groups results by individual capability.  If omitted, the AD MUST
-      use "agent".
+      Filter by capability tag.  Returns agents having at least one
+      capability carrying the specified tag.
 
    page:
-      Page number (zero-based) for pagination.  Default: 0.
+      Page number (zero-based).  Default: 0.
 
    count:
-      Maximum number of results per page.  Default: 100.  The AD MAY
-      enforce a lower maximum and MUST document its limit in the well-
-      known response.
+      Results per page.  The AD's maximum is reported in the well-known
+      response (max_count).  Default: the AD's maximum.
+
+5.2.  Lookup Response
+
+   Each object in the agents array contains:
+
+   agent:
+      The registered agent name.
+
+   base:
+      The agent's base URI.
+
+   description:
+      The agent's description, if registered.
+
+   protocols:
+      Interaction protocols the agent supports.
+
+   capabilities:
+      An array of capability name strings.  Full capability details
+      (descriptions, schemas) are omitted to keep responses compact.
+
+   href:
+      The registration resource URI.  Clients retrieve the full
+      registration by sending GET to this URI (Section 4.3).
+
+   This two-step pattern mirrors the RD's separation between endpoint
+   lookup and resource lookup [RFC9176]: the lookup returns compact
+   summaries with pointers; the client dereferences the pointer for full
+   details.
+
+5.3.  Pagination
+
+   When more results exist beyond the current page, the AD includes a
+   Link header [RFC8288] with rel="next":
+
+   Link: </ad/l?cap_name=summarize&page=1&count=50>; rel="next"
+
+   An empty agents array with no rel="next" link indicates no results or
+   end of results.
 
 6.  Error Responses
 
@@ -942,10 +901,19 @@ Content-Type: application/json
               RFC 3986, DOI 10.17487/RFC3986, January 2005,
               <https://www.rfc-editor.org/rfc/rfc3986>.
 
+   [RFC6570]  Gregorio, J., Fielding, R., Hadley, M., Nottingham, M.,
+              and D. Orchard, "URI Template", RFC 6570,
+              DOI 10.17487/RFC6570, March 2012,
+              <https://www.rfc-editor.org/rfc/rfc6570>.
+
    [RFC6750]  Jones, M. and D. Hardt, "The OAuth 2.0 Authorization
               Framework: Bearer Token Usage", RFC 6750,
               DOI 10.17487/RFC6750, October 2012,
               <https://www.rfc-editor.org/rfc/rfc6750>.
+
+   [RFC8288]  Nottingham, M., "Web Linking", RFC 8288,
+              DOI 10.17487/RFC8288, October 2017,
+              <https://www.rfc-editor.org/rfc/rfc8288>.
 
    [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
               (URIs)", RFC 8615, DOI 10.17487/RFC8615, May 2019,
@@ -1212,7 +1180,7 @@ B.1.  Discovery Flow
       Client                          AD                         Agent
         |                              |                            |
         |  1. Obtain AD URL            |                            |
-        |  (DNS-SD/config/.well-known)  |                            |
+        |  (DNS-SD/config/.well-known) |                            |
         |                              |                            |
         |  2. GET /.well-known/ad ---->|                            |
         |  <--- lookup interface URL   |                            |

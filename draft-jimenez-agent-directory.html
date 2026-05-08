@@ -1048,7 +1048,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Jimenez</td>
-<td class="center">Expires 8 November 2026</td>
+<td class="center">Expires 9 November 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1056,17 +1056,17 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <div id="internal-metadata" class="document-information">
 <dl id="identifiers">
 <dt class="label-workgroup">Workgroup:</dt>
-<dd class="workgroup">DAWN</dd>
+<dd class="workgroup">Network Working Group</dd>
 <dt class="label-internet-draft">Internet-Draft:</dt>
 <dd class="internet-draft">draft-jimenez-agent-directory-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-05-07" class="published">7 May 2026</time>
+<time datetime="2026-05-08" class="published">8 May 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-11-08">8 November 2026</time></dd>
+<dd class="expires"><time datetime="2026-11-09">9 November 2026</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1111,7 +1111,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 8 November 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 9 November 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1202,13 +1202,13 @@ svg :is([fill="white"], [fill^="#fff"]) {
             <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-lookup" class="internal xref">Lookup</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
-                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-agent-view" class="internal xref">Agent View</a></p>
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-query-parameters" class="internal xref">Query Parameters</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
-                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-capability-view" class="internal xref">Capability View</a></p>
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-lookup-response" class="internal xref">Lookup Response</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3">
-                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-query-parameters" class="internal xref">Query Parameters</a></p>
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-pagination" class="internal xref">Pagination</a></p>
 </li>
             </ul>
 </li>
@@ -1559,7 +1559,7 @@ appear in all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">�
           <dd class="break"></dd>
 <dt id="section-3.1-4.3">lookup:</dt>
           <dd style="margin-left: 1.5em" id="section-3.1-4.4">
-            <p id="section-3.1-4.4.1">(string, <span class="bcp14">REQUIRED</span>) Path to the lookup endpoint.<a href="#section-3.1-4.4.1" class="pilcrow">¶</a></p>
+            <p id="section-3.1-4.4.1">(string, <span class="bcp14">REQUIRED</span>) URI Template <span>[<a href="#RFC6570" class="cite xref">RFC6570</a>]</span> for the lookup endpoint. The template variables indicate the supported query parameters.<a href="#section-3.1-4.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-3.1-4.5">max_count:</dt>
@@ -1579,7 +1579,7 @@ Content-Type: application/json
 
 {
   "registration": "/ad/r",
-  "lookup": "/ad/l",
+  "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
   "max_count": 100
 }
 </pre><a href="#section-3.1-6" class="pilcrow">¶</a>
@@ -1871,23 +1871,10 @@ HTTP/1.1 204 No Content
       <h2 id="name-lookup">
 <a href="#section-5" class="section-number selfRef">5. </a><a href="#name-lookup" class="section-name selfRef">Lookup</a>
       </h2>
-<p id="section-5-1">The AD provides a single unified lookup endpoint. The <code>view</code> query parameter controls how results are grouped:<a href="#section-5-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-5-2.1">
-          <p id="section-5-2.1.1"><code>view=agent</code> (default): returns a list of registered agents matching the query, with capability summaries.<a href="#section-5-2.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-5-2.2">
-          <p id="section-5-2.2.1"><code>view=cap</code>: returns a list of individual capabilities across all matching agents.<a href="#section-5-2.2.1" class="pilcrow">¶</a></p>
-</li>
-      </ul>
-<div id="agent-view">
-<section id="section-5.1">
-        <h3 id="name-agent-view">
-<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-agent-view" class="section-name selfRef">Agent View</a>
-        </h3>
-<div class="alignLeft art-text artwork" id="section-5.1-1">
+<p id="section-5-1">The AD provides a lookup endpoint for discovering registered agents. The lookup endpoint URI is obtained from the well-known response (<a href="#discovery" class="auto internal xref">Section 3</a>). All query parameters act as conjunctive filters: only agents matching all specified criteria are returned. A request with no filters returns all agents visible to the requesting client.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-5-2">
 <pre>
-GET /ad/l HTTP/1.1
+GET /ad/l?cap_name=summarize&amp;protocol=a2a HTTP/1.1
 Host: directory.example.com
 Accept: application/json
 
@@ -1901,120 +1888,110 @@ Content-Type: application/json
       "base": "https://agents.example.com/summarizer-v2",
       "description": "Summarizes documents and extracts named entities",
       "protocols": ["a2a"],
-      "capabilities": [
-        {"name": "summarize", "type": "tool"},
-        {"name": "extract_entities", "type": "tool"}
-      ],
+      "capabilities": ["summarize", "extract_entities"],
       "href": "/ad/r/4521"
-    },
-    {
-      "agent": "citation-finder",
-      "base": "https://agents.example.com/citation-finder",
-      "description": "Finds and verifies academic citations",
-      "protocols": ["mcp"],
-      "capabilities": [
-        {"name": "find_citations", "type": "tool"},
-        {"name": "check_references", "type": "tool"}
-      ],
-      "href": "/ad/r/4522"
     }
   ]
 }
-</pre><a href="#section-5.1-1" class="pilcrow">¶</a>
-</div>
-<p id="section-5.1-2">Agent view returns capability summary objects (name and type only). Full capability details (description, schemas) are omitted to keep lookup responses compact. Clients that need the full registration <span class="bcp14">SHOULD</span> retrieve the individual registration resource (GET /ad/r/{id}). This two-step pattern mirrors the RD's separation between endpoint lookup and resource lookup.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="capability-view">
-<section id="section-5.2">
-        <h3 id="name-capability-view">
-<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-capability-view" class="section-name selfRef">Capability View</a>
-        </h3>
-<p id="section-5.2-1">Capability view returns individual capabilities with their owning agent's information. Clients use this view to find specific tools or skills across all registered agents.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-5.2-2">
-<pre>
-GET /ad/l?cap_name=summarize&amp;view=cap HTTP/1.1
-Host: directory.example.com
-Accept: application/json
-
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "capabilities": [
-    {
-      "name": "summarize",
-      "type": "tool",
-      "description": "Summarize a document or text passage",
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
-      "protocols": ["a2a"],
-      "href": "/ad/r/4521"
-    },
-    {
-      "name": "summarize_meeting",
-      "type": "tool",
-      "description": "Summarize meeting transcripts",
-      "agent": "meeting-assistant",
-      "base": "https://agents.example.com/meeting-bot",
-      "protocols": ["mcp"],
-      "href": "/ad/r/4523"
-    }
-  ]
-}
-</pre><a href="#section-5.2-2" class="pilcrow">¶</a>
-</div>
-<p id="section-5.2-3">Each capability object in the response includes: "name", "type", "description" (if registered), the owning agent's "agent", "base", "protocols", and "href" (the registration resource URI). Clients can use "href" to retrieve the full registration.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
-</section>
+</pre><a href="#section-5-2" class="pilcrow">¶</a>
 </div>
 <div id="lookup-params">
-<section id="section-5.3">
+<section id="section-5.1">
         <h3 id="name-query-parameters">
-<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-query-parameters" class="section-name selfRef">Query Parameters</a>
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-query-parameters" class="section-name selfRef">Query Parameters</a>
         </h3>
-<p id="section-5.3-1">All query parameters are <span class="bcp14">OPTIONAL</span> and act as filters. When multiple filter parameters are present, the AD <span class="bcp14">MUST</span> AND them: only entries matching all specified filters are returned. A request with no filter parameters returns all registrations visible to the requesting client.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlNewline" id="section-5.3-2">
-          <dt id="section-5.3-2.1">agent:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.2">
-            <p id="section-5.3-2.2.1">Filter by agent name. A trailing asterisk (*) matches any suffix (e.g., <code>agent=sum*</code> matches "summarizer" and "summary-bot"). Without an asterisk, the value <span class="bcp14">MUST</span> match exactly. Wildcard matching is only supported for the <code>agent</code> and <code>cap_name</code> parameters.<a href="#section-5.3-2.2.1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlNewline" id="section-5.1-1">
+          <dt id="section-5.1-1.1">agent:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.2">
+            <p id="section-5.1-1.2.1">Filter by agent name. Trailing <code>*</code> for prefix match; exact match otherwise.<a href="#section-5.1-1.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.3">protocol:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.4">
-            <p id="section-5.3-2.4.1">Filter by supported interaction protocol. Exact match.<a href="#section-5.3-2.4.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.3">protocol:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.4">
+            <p id="section-5.1-1.4.1">Filter by interaction protocol. Exact match against the agent's <code>protocols</code> array.<a href="#section-5.1-1.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.5">cap_name:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.6">
-            <p id="section-5.3-2.6.1">Filter by capability name. Trailing asterisk (*) for prefix match; exact match otherwise.<a href="#section-5.3-2.6.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.5">cap_name:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.6">
+            <p id="section-5.1-1.6.1">Filter by capability name. Returns agents having at least one matching capability. Trailing <code>*</code> for prefix match.<a href="#section-5.1-1.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.7">cap_type:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.8">
-            <p id="section-5.3-2.8.1">Filter by capability type (e.g., "tool", "skill"). Exact match.<a href="#section-5.3-2.8.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.7">cap_type:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.8">
+            <p id="section-5.1-1.8.1">Filter by capability type (e.g., "tool", "skill"). Returns agents having at least one capability of that type.<a href="#section-5.1-1.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.9">tag:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.10">
-            <p id="section-5.3-2.10.1">Filter by capability tag. Returns agents (or capabilities) that have at least one capability carrying the specified tag. Exact match. In agent view, the full agent with all its capabilities is returned if any capability matches.<a href="#section-5.3-2.10.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.9">tag:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.10">
+            <p id="section-5.1-1.10.1">Filter by capability tag. Returns agents having at least one capability carrying the specified tag.<a href="#section-5.1-1.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.11">view:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.12">
-            <p id="section-5.3-2.12.1">Result grouping. "agent" (default) groups results by agent; "cap" groups results by individual capability. If omitted, the AD <span class="bcp14">MUST</span> use "agent".<a href="#section-5.3-2.12.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.11">page:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.12">
+            <p id="section-5.1-1.12.1">Page number (zero-based). Default: 0.<a href="#section-5.1-1.12.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-5.3-2.13">page:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.14">
-            <p id="section-5.3-2.14.1">Page number (zero-based) for pagination. Default: 0.<a href="#section-5.3-2.14.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-5.3-2.15">count:</dt>
-          <dd style="margin-left: 1.5em" id="section-5.3-2.16">
-            <p id="section-5.3-2.16.1">Maximum number of results per page. Default: 100. The AD <span class="bcp14">MAY</span> enforce a lower maximum and <span class="bcp14">MUST</span> document its limit in the well-known response.<a href="#section-5.3-2.16.1" class="pilcrow">¶</a></p>
+<dt id="section-5.1-1.13">count:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.1-1.14">
+            <p id="section-5.1-1.14.1">Results per page. The AD's maximum is reported in the well-known response (<code>max_count</code>). Default: the AD's maximum.<a href="#section-5.1-1.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
+</section>
+</div>
+<div id="lookup-response">
+<section id="section-5.2">
+        <h3 id="name-lookup-response">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-lookup-response" class="section-name selfRef">Lookup Response</a>
+        </h3>
+<p id="section-5.2-1">Each object in the <code>agents</code> array contains:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlNewline" id="section-5.2-2">
+          <dt id="section-5.2-2.1">agent:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.2">
+            <p id="section-5.2-2.2.1">The registered agent name.<a href="#section-5.2-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.3">base:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.4">
+            <p id="section-5.2-2.4.1">The agent's base URI.<a href="#section-5.2-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.5">description:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.6">
+            <p id="section-5.2-2.6.1">The agent's description, if registered.<a href="#section-5.2-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.7">protocols:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.8">
+            <p id="section-5.2-2.8.1">Interaction protocols the agent supports.<a href="#section-5.2-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.9">capabilities:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.10">
+            <p id="section-5.2-2.10.1">An array of capability name strings. Full capability details (descriptions, schemas) are omitted to keep responses compact.<a href="#section-5.2-2.10.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.11">href:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.12">
+            <p id="section-5.2-2.12.1">The registration resource URI. Clients retrieve the full registration by sending GET to this URI (<a href="#registration-read" class="auto internal xref">Section 4.3</a>).<a href="#section-5.2-2.12.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-5.2-3">This two-step pattern mirrors the RD's separation between endpoint lookup and resource lookup <span>[<a href="#RFC9176" class="cite xref">RFC9176</a>]</span>: the lookup returns compact summaries with pointers; the client dereferences the pointer for full details.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="pagination">
+<section id="section-5.3">
+        <h3 id="name-pagination">
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-pagination" class="section-name selfRef">Pagination</a>
+        </h3>
+<p id="section-5.3-1">When more results exist beyond the current page, the AD includes a Link header <span>[<a href="#RFC8288" class="cite xref">RFC8288</a>]</span> with <code>rel="next"</code>:<a href="#section-5.3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-5.3-2">
+<pre>
+Link: &lt;/ad/l?cap_name=summarize&amp;page=1&amp;count=50&gt;; rel="next"
+</pre><a href="#section-5.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-5.3-3">An empty <code>agents</code> array with no <code>rel="next"</code> link indicates no results or end of results.<a href="#section-5.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2220,9 +2197,17 @@ Content-Type: application/problem+json
         <dd>
 <span class="refAuthor">Berners-Lee, T.</span>, <span class="refAuthor">Fielding, R.</span>, and <span class="refAuthor">L. Masinter</span>, <span class="refTitle">"Uniform Resource Identifier (URI): Generic Syntax"</span>, <span class="seriesInfo">STD 66</span>, <span class="seriesInfo">RFC 3986</span>, <span class="seriesInfo">DOI 10.17487/RFC3986</span>, <time datetime="2005-01" class="refDate">January 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc3986">https://www.rfc-editor.org/rfc/rfc3986</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC6570">[RFC6570]</dt>
+        <dd>
+<span class="refAuthor">Gregorio, J.</span>, <span class="refAuthor">Fielding, R.</span>, <span class="refAuthor">Hadley, M.</span>, <span class="refAuthor">Nottingham, M.</span>, and <span class="refAuthor">D. Orchard</span>, <span class="refTitle">"URI Template"</span>, <span class="seriesInfo">RFC 6570</span>, <span class="seriesInfo">DOI 10.17487/RFC6570</span>, <time datetime="2012-03" class="refDate">March 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6570">https://www.rfc-editor.org/rfc/rfc6570</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC6750">[RFC6750]</dt>
         <dd>
 <span class="refAuthor">Jones, M.</span> and <span class="refAuthor">D. Hardt</span>, <span class="refTitle">"The OAuth 2.0 Authorization Framework: Bearer Token Usage"</span>, <span class="seriesInfo">RFC 6750</span>, <span class="seriesInfo">DOI 10.17487/RFC6750</span>, <time datetime="2012-10" class="refDate">October 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6750">https://www.rfc-editor.org/rfc/rfc6750</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8288">[RFC8288]</dt>
+        <dd>
+<span class="refAuthor">Nottingham, M.</span>, <span class="refTitle">"Web Linking"</span>, <span class="seriesInfo">RFC 8288</span>, <span class="seriesInfo">DOI 10.17487/RFC8288</span>, <time datetime="2017-10" class="refDate">October 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8288">https://www.rfc-editor.org/rfc/rfc8288</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8615">[RFC8615]</dt>
         <dd>
@@ -2441,7 +2426,7 @@ Content-Type: application/problem+json
  Client                          AD                         Agent
    |                              |                            |
    |  1. Obtain AD URL            |                            |
-   |  (DNS-SD/config/.well-known)  |                            |
+   |  (DNS-SD/config/.well-known) |                            |
    |                              |                            |
    |  2. GET /.well-known/ad ----&gt;|                            |
    |  &lt;--- lookup interface URL   |                            |
