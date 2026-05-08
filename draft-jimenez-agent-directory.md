@@ -21,7 +21,6 @@ author:
 normative:
   RFC3986:
   RFC6570:
-  RFC6750:
   RFC8288:
   RFC8615:
   RFC9110:
@@ -221,37 +220,37 @@ Several DNS-based mechanisms have been proposed in the DAWN working group for wi
 
 An agent registers by sending a POST request to the AD's registration endpoint. All HTTP interactions with the AD follow the semantics defined in {{RFC9110}}. The request body is a JSON object containing the agent's metadata and capabilities.
 
-    POST /ad/r?agent=summarizer-v2 HTTP/1.1
+    POST /ad/r?agent=cdn-cache-manager HTTP/1.1
     Host: directory.example.com
     Content-Type: application/json
 
     {
-      "base": "https://agents.example.com/summarizer-v2",
-      "description": "Summarizes documents and extracts named entities",
+      "base": "https://agents.example.com/cdn-cache-manager",
+      "description": "Manages CDN cache invalidation and prefetch policies",
       "protocols": ["a2a"],
       "capabilities": [
         {
-          "name": "summarize",
+          "name": "purge_by_tag",
           "type": "tool",
-          "description": "Summarize a document or text passage",
+          "description": "Invalidate cached objects matching a surrogate key",
           "input_schema": {
             "type": "object",
             "properties": {
-              "text": {"type": "string"},
-              "max_length": {"type": "integer"}
+              "tag": {"type": "string"},
+              "zone_id": {"type": "string"}
             },
-            "required": ["text"]
+            "required": ["tag"]
           }
         },
         {
-          "name": "extract_entities",
+          "name": "prefetch_origins",
           "type": "tool",
-          "description": "Extract named entities from text"
+          "description": "Warm cache by fetching from origin servers"
         }
       ],
-      "version": "2.1.0",
+      "version": "1.3.0",
       "vendor": "Example Corp",
-      "identity": "https://registry.example.com/agents/summarizer-v2",
+      "identity": "https://registry.example.com/agents/cdn-cache-manager",
       "identity_type": "aip"
     }
 
@@ -336,30 +335,30 @@ An agent or client retrieves a single registration by sending a GET request to t
     Content-Type: application/json
 
     {
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
+      "agent": "cdn-cache-manager",
+      "base": "https://agents.example.com/cdn-cache-manager",
       "protocols": ["a2a"],
       "capabilities": [
         {
-          "name": "summarize",
+          "name": "purge_by_tag",
           "type": "tool",
-          "description": "Summarize a document or text passage",
+          "description": "Invalidate cached objects matching a surrogate key",
           "input_schema": {
             "type": "object",
             "properties": {
-              "text": {"type": "string"},
-              "max_length": {"type": "integer"}
+              "tag": {"type": "string"},
+              "zone_id": {"type": "string"}
             },
-            "required": ["text"]
+            "required": ["tag"]
           }
         },
         {
-          "name": "extract_entities",
+          "name": "prefetch_origins",
           "type": "tool",
-          "description": "Extract named entities from text"
+          "description": "Warm cache by fetching from origin servers"
         }
       ],
-      "version": "2.1.0",
+      "version": "1.3.0",
       "vendor": "Example Corp",
       "href": "/ad/r/4521"
     }
@@ -670,7 +669,7 @@ Discovering an agent through the AD involves four steps: locating the directory,
    |  <--- lookup URI Template    |                            |
    |                              |                            |
    |  3. GET /ad/l?               |                            |
-   |     cap_name=summarize ----->|                            |
+   |     cap_name=purge* -------->|                            |
    |  <--- matching agents + base |                            |
    |                              |                            |
    |  4. Interact with agent using protocol from lookup -----> |
@@ -710,9 +709,9 @@ or follows a convention, in which case this step can be skipped.
 
 Step 3: Search for an agent with the desired capability.
 
-The client expands the lookup URI Template with `cap_name=summarize`.
+The client expands the lookup URI Template with `cap_name=purge*`.
 
-    GET https://ad.example.com/ad/l?cap_name=summarize HTTP/1.1
+    GET https://ad.example.com/ad/l?cap_name=purge* HTTP/1.1
 
     HTTP/1.1 200 OK
     Content-Type: application/json
@@ -720,13 +719,13 @@ The client expands the lookup URI Template with `cap_name=summarize`.
     {
       "agents": [
         {
-          "agent": "summarizer-v2",
-          "base": "https://agents.example.com/summarizer-v2",
-          "description": "Summarizes documents and extracts named entities",
+          "agent": "cdn-cache-manager",
+          "base": "https://agents.example.com/cdn-cache-manager",
+          "description": "Manages CDN cache invalidation and prefetch policies",
           "protocols": ["a2a"],
           "capabilities": [
-            {"name": "summarize", "type": "tool"},
-            {"name": "extract_entities", "type": "tool"}
+            {"name": "purge_by_tag", "type": "tool"},
+            {"name": "prefetch_origins", "type": "tool"}
           ],
           "href": "/ad/r/4521"
         }
@@ -739,11 +738,11 @@ agent directly.
 
 Step 4: Interact with the agent.
 
-The lookup response indicated that `summarizer-v2` is reachable
+The lookup response indicated that `cdn-cache-manager` is reachable
 over A2A. The client fetches the agent's A2A Agent Card to
 obtain the full task interface before invocation.
 
-    GET https://agents.example.com/summarizer-v2/.well-known/agent-card.json
+    GET https://agents.example.com/cdn-cache-manager/.well-known/agent-card.json
     HTTP/1.1
 
     HTTP/1.1 200 OK
