@@ -94,8 +94,8 @@ This document specifies the Agent Directory (AD). The core mapping to CoRE RD co
 | Endpoint (EP) | Agent |
 | Resource link | Capability / tool description |
 | Registration resource | Agent registration resource |
-| Endpoint lookup | Lookup, agent view (`view=agent`) |
-| Resource lookup | Lookup, capability view (`view=cap`) |
+| Endpoint lookup | Lookup (GET on the lookup endpoint) |
+| Resource lookup | Capabilities embedded in the agent registration |
 | Lifetime (lt) | Registration lifetime |
 
 Agents register with the AD by sending a POST request with a JSON document describing their capabilities. Registrations are soft state and expire unless refreshed.
@@ -364,7 +364,7 @@ An agent or client retrieves a single registration by sending a GET request to t
       "href": "/ad/r/4521"
     }
 
-The response includes the full registration content, including capability details (description, schemas) that are omitted from lookup results with `view=agent`. If the registration resource does not exist, the AD MUST return 404 (Not Found).
+The response includes the full registration content, including capability details (description, schemas) that are omitted from lookup results ({{lookup-response}}). If the registration resource does not exist, the AD MUST return 404 (Not Found).
 
 ## Registration Update {#registration-update}
 
@@ -438,27 +438,33 @@ The AD provides a lookup endpoint for discovering registered agents. The lookup 
 
 ## Query Parameters {#lookup-params}
 
+All filters use exact match on the registered value, with one exception: `agent` and `cap_name` support a single trailing `*` as a prefix-match operator (e.g., `cap_name=purge*` matches `purge_by_tag`). The `*` character MUST NOT appear anywhere else in these values, and agent and capability names MUST NOT contain a literal `*`. The AD MUST reject registrations whose agent or capability names contain `*` with 400 (Bad Request). No other glob or regular-expression syntax is supported.
+
 {:vspace}
 agent:
 : Filter by agent name. Trailing `*` for prefix match; exact match otherwise.
 
 protocol:
-: Filter by interaction protocol. Exact match against the agent's `protocols` array.
+: Filter by interaction protocol. Matches when the given value appears in the agent's `protocols` array.
 
 cap_name:
-: Filter by capability name. Returns agents having at least one matching capability. Trailing `*` for prefix match.
+: Filter by capability name. Trailing `*` for prefix match.
 
 cap_type:
-: Filter by capability type (e.g., "tool", "skill"). Returns agents having at least one capability of that type.
+: Filter by capability type (e.g., "tool", "skill").
 
 tag:
-: Filter by capability tag. Returns agents having at least one capability carrying the specified tag.
+: Filter by capability tag. Matches when the given value appears in any capability's `tags` array.
 
 page:
 : Page number (zero-based). Default: 0.
 
 count:
-: Results per page. The AD's maximum is reported in the well-known response (`max_count`). Default: the AD's maximum.
+: Results per page. The AD MUST clamp values exceeding the `max_count` reported in the well-known response ({{discovery}}) to that maximum. Default: the AD's `max_count`.
+
+When multiple `cap_*` or `tag` filters are present, the AD MUST match agents that have at least one *single* capability satisfying all `cap_*` and `tag` filters jointly. For example, `cap_type=tool&tag=search` matches agents with a capability that is both typed `tool` and tagged `search`, not agents that happen to have a `tool` capability and, separately, a capability with a `search` tag.
+
+The AD MUST ignore unknown query parameters rather than returning an error.
 
 ## Lookup Response {#lookup-response}
 
@@ -489,7 +495,7 @@ This two-step pattern mirrors the RD's separation between endpoint lookup and re
 
 When more results exist beyond the current page, the AD includes a Link header {{RFC8288}} with `rel="next"`:
 
-    Link: </ad/l?cap_name=purge*&page=1&count=50>; rel="next"
+    Link: </ad/l?cap_name=purge*&page=1>; rel="next"
 
 An empty `agents` array with no `rel="next"` link indicates no results or end of results.
 
@@ -661,11 +667,10 @@ Discovering an agent through the AD involves four steps: locating the directory,
    |  (DNS-SD/config/.well-known) |                            |
    |                              |                            |
    |  2. GET /.well-known/ad ---->|                            |
-   |  <--- lookup interface URL   |                            |
+   |  <--- lookup URI Template    |                            |
    |                              |                            |
    |  3. GET /ad/l?               |                            |
-   |     cap_name=summarize       |                            |
-   |     &view=cap -------------->|                            |
+   |     cap_name=summarize ----->|                            |
    |  <--- matching agents + base |                            |
    |                              |                            |
    |  4. Interact with agent using protocol from lookup -----> |
@@ -696,7 +701,7 @@ interfaces.
 
     {
       "registration": "/ad/r",
-      "lookup": "/ad/l",
+      "lookup": "/ad/l{?agent,protocol,cap_name,cap_type,tag,page,count}",
       "max_count": 100
     }
 
@@ -705,23 +710,24 @@ or follows a convention, in which case this step can be skipped.
 
 Step 3: Search for an agent with the desired capability.
 
-The client queries the lookup interface with `view=cap`.
+The client expands the lookup URI Template with `cap_name=summarize`.
 
-    GET https://ad.example.com/ad/l?cap_name=summarize&view=cap
-    HTTP/1.1
+    GET https://ad.example.com/ad/l?cap_name=summarize HTTP/1.1
 
     HTTP/1.1 200 OK
     Content-Type: application/json
 
     {
-      "capabilities": [
+      "agents": [
         {
-          "name": "summarize",
-          "type": "tool",
-          "description": "Summarize a document or text passage",
           "agent": "summarizer-v2",
           "base": "https://agents.example.com/summarizer-v2",
+          "description": "Summarizes documents and extracts named entities",
           "protocols": ["a2a"],
+          "capabilities": [
+            {"name": "summarize", "type": "tool"},
+            {"name": "extract_entities", "type": "tool"}
+          ],
           "href": "/ad/r/4521"
         }
       ]
@@ -844,54 +850,56 @@ Step 2: A client queries for MCP agents.
 
 ## Filtered Lookup with Pagination
 
-A client enumerates MCP tool capabilities in pages of two.
+A client enumerates MCP agents that expose tool capabilities, one per page.
 
-    GET /ad/l?protocol=mcp&cap_type=tool&view=cap&count=2&page=0 HTTP/1.1
+    GET /ad/l?protocol=mcp&cap_type=tool&count=1&page=0 HTTP/1.1
     Host: ad.example.com
     Accept: application/json
 
     HTTP/1.1 200 OK
     Content-Type: application/json
+    Link: </ad/l?protocol=mcp&cap_type=tool&count=1&page=1>; rel="next"
 
     {
-      "capabilities": [
+      "agents": [
         {
-          "name": "classify_ticket",
-          "type": "tool",
           "agent": "ticket-classifier",
           "base": "https://agents.example.com/ticket-classifier",
+          "description": "Classifies incoming support tickets.",
           "protocols": ["mcp"],
-          "href": "/ad/r/201"
-        },
-        {
-          "name": "suggest_priority",
-          "type": "tool",
-          "agent": "ticket-classifier",
-          "base": "https://agents.example.com/ticket-classifier",
-          "protocols": ["mcp"],
+          "capabilities": [
+            {"name": "classify_ticket", "type": "tool"},
+            {"name": "suggest_priority", "type": "tool"}
+          ],
           "href": "/ad/r/201"
         }
       ]
     }
 
-    GET /ad/l?protocol=mcp&cap_type=tool&view=cap&count=2&page=1 HTTP/1.1
+The client follows the `rel="next"` link:
+
+    GET /ad/l?protocol=mcp&cap_type=tool&count=1&page=1 HTTP/1.1
     Host: ad.example.com
 
     HTTP/1.1 200 OK
     Content-Type: application/json
 
     {
-      "capabilities": [
+      "agents": [
         {
-          "name": "search_kb",
-          "type": "tool",
           "agent": "knowledge-lookup",
           "base": "https://agents.example.com/kb",
+          "description": "Searches internal knowledge base.",
           "protocols": ["mcp"],
+          "capabilities": [
+            {"name": "search_kb", "type": "tool"}
+          ],
           "href": "/ad/r/202"
         }
       ]
     }
+
+No `Link: rel="next"` header is present, indicating the end of results.
 
 ## Registration Conflict
 
@@ -943,7 +951,7 @@ Level of Maturity:
 : Prototype
 
 Coverage:
-: All features specified in this document: well-known URI discovery, agent registration (create, update, replace, delete), agent lookup with filtering and pagination, capability lookup with filtering and pagination, soft-state expiry, and RFC 9457 error responses.
+: All features specified in this document: well-known URI discovery (URI Template lookup), agent registration (create, update, replace, delete), agent lookup with filtering and Link-header pagination, soft-state expiry, and RFC 9457 error responses.
 
 Version Compatibility:
 : draft-jimenez-agent-directory-00
@@ -971,7 +979,7 @@ The following table summarizes the conceptual mapping between CoRE RD concepts a
 | Registration resource | Registration resource | Same lifecycle |
 | Lifetime (lt) | Lifetime (lt) | Same semantics, different default |
 | Endpoint name (ep) | Agent name (agent) | Same uniqueness constraint |
-| Resource lookup | Lookup view=cap (GET /ad/l?view=cap) | Structured query instead of link-format filter |
-| Endpoint lookup | Lookup view=agent (GET /ad/l) | Same pattern, unified endpoint |
+| Resource lookup | Capabilities embedded in agent registration | Capabilities are nested in the registration, not independent resources |
+| Endpoint lookup | GET on the lookup endpoint | Structured filters instead of link-format query |
 | Commissioning Tool (CT) | Commissioning Tool (CT) | Third-party registration |
 | application/link-format | application/json | Representation format |
