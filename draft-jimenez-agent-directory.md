@@ -26,6 +26,8 @@ normative:
   RFC9110:
   RFC9176:
   RFC9457:
+  I-D.ietf-wimse-workload-creds:
+  I-D.ietf-wimse-wpt:
 
 informative:
   RFC6690:
@@ -220,9 +222,13 @@ Several DNS-based mechanisms have been proposed in the DAWN working group for wi
 
 An agent registers by sending a POST request to the AD's registration endpoint. All HTTP interactions with the AD follow the semantics defined in {{RFC9110}}. The request body is a JSON object containing the agent's metadata and capabilities.
 
+The agent MUST prove its identity by including a Workload Identity Token (WIT) {{I-D.ietf-wimse-workload-creds}} and a Workload Proof Token (WPT) {{I-D.ietf-wimse-wpt}} in the request headers. The WIT declares the agent's identity (signed by an Identity Server); the WPT proves the agent holds the corresponding private key. The AD verifies both before accepting the registration.
+
     POST /ad/r?agent=cdn-cache-manager HTTP/1.1
     Host: directory.example.com
     Content-Type: application/json
+    Workload-Identity-Token: <WIT>
+    Workload-Proof-Token: <WPT>
 
     {
       "base": "https://agents.example.com/cdn-cache-manager",
@@ -249,9 +255,7 @@ An agent registers by sending a POST request to the AD's registration endpoint. 
         }
       ],
       "version": "1.3.0",
-      "vendor": "Example Corp",
-      "identity": "https://registry.example.com/agents/cdn-cache-manager",
-      "identity_type": "aip"
+      "vendor": "Example Corp"
     }
 
     HTTP/1.1 201 Created
@@ -288,12 +292,23 @@ vendor:
 : (string, OPTIONAL) The organization or individual that provides the agent.
 
 identity:
-: (string, OPTIONAL) A URI pointing to the agent's identity metadata document. This document describes the agent's verified identity, trust posture, owner binding, or credentials in a structured format. The AD stores and returns this URI without interpreting its contents.
+: (string, OPTIONAL) The agent's identity URI as declared in the WIT `sub` claim (e.g., a `wimse://` URI). The AD populates this field from the verified WIT when present; agents SHOULD NOT set it manually. Clients can use this value to verify the agent's identity through the issuing trust domain.
 
-identity_type:
-: (string, OPTIONAL) The schema or format of the identity document referenced by `identity`. Values include "aip" (Agent Identity Profile), "oidc" (OpenID Connect Discovery), "wimse" (WIMSE workload identity), and "did" (Decentralized Identifier Document). Clients that recognize the type can dereference and validate the identity document; clients that do not recognize the type SHOULD ignore both fields.
+### Registration Authentication {#registration-auth}
 
-When present, the `identity` field lets a client verify an agent beyond trusting the AD. For example, a client discovering a financial-analysis agent can fetch its AIP document to check owner binding, attestation state, and credential lifetime before invoking the agent. The AD stores the URI and does not interpret it; trust decisions remain the client's. Clients MUST NOT treat the presence of an `identity` field as proof of identity without verifying the referenced document.
+The AD MUST verify the agent's identity before accepting a registration. The verification procedure is:
+
+1. Extract the WIT from the `Workload-Identity-Token` header; verify its signature against the Identity Server's published signing key for the trust domain in the WIT `iss` claim.
+2. Check that the WIT has not expired (`exp`).
+3. Extract the public key from the WIT `cnf.jwk` claim.
+4. Extract the WPT from the `Workload-Proof-Token` header; verify its signature using the public key from step 3.
+5. Verify the WPT `aud` claim matches the AD's registration endpoint URI.
+6. Verify the WPT `wth` claim matches the SHA-256 hash of the WIT value.
+7. Check that the WPT has not expired (`exp`) and that its `jti` has not been seen before.
+
+If any step fails, the AD MUST reject the registration with 401 (Unauthorized). On success, the AD binds the registration to the WIT `sub` identity. Subsequent updates and deletions MUST present a valid WIT+WPT pair with the same `sub` value.
+
+The AD stores the verified identity (the WIT `sub` claim) as part of the registration resource and returns it in the `identity` field of lookup responses. This provides clients with a cryptographically verified identity without requiring them to re-verify the WIT themselves.
 
 ### Capability Types {#capability-types}
 
@@ -318,9 +333,9 @@ This list is extensible. Implementations MAY use additional type values. The rem
 
 Registration is idempotent on the agent name; a POST with the same agent name acts as an upsert. This follows the RFC 9176 pattern of POST-to-collection for registration rather than PUT to a canonical agent URL. The AD stores the `agent` value from the query parameter as part of the registration resource and includes it in all response representations.
 
-* If no registration exists for the agent name, a new registration resource is created. The AD returns 201 (Created) with a Location header pointing to the registration resource.
-* If a registration already exists for the agent name and the request comes from the same authenticated entity, the registration is replaced with the new content. The AD returns 200 (OK) with the Location header of the existing registration resource.
-* If a registration already exists for the agent name but is owned by a different authenticated entity, the AD returns 409 (Conflict).
+* If no registration exists for the agent name, a new registration resource is created. The AD binds it to the WIT `sub` identity. The AD returns 201 (Created) with a Location header pointing to the registration resource.
+* If a registration already exists for the agent name and the WIT `sub` matches the identity bound at creation, the registration is replaced with the new content. The AD returns 200 (OK) with the Location header of the existing registration resource.
+* If a registration already exists for the agent name but is bound to a different identity (different WIT `sub`), the AD returns 409 (Conflict).
 
 The response body for both 201 and 200 is empty. Clients that need the full representation SHOULD send a GET request to the URI in the Location header. The AD MAY grant a lifetime shorter than requested; the granted lifetime MUST be indicated in the response via a `lt` field in a JSON body or via the Location header's associated resource.
 
@@ -482,6 +497,9 @@ description:
 protocols:
 : Interaction protocols the agent supports.
 
+identity:
+: The agent's verified identity URI (from the WIT `sub` claim presented at registration). Clients can use this to verify the agent through its trust domain.
+
 capabilities:
 : An array of capability summary objects, each with "name" and "type". Full details (descriptions, schemas, tags) are omitted to keep responses compact.
 
@@ -557,11 +575,17 @@ All communication with the AD MUST be protected using TLS.
 
 ## Authentication
 
-Agents MUST authenticate when registering. The AD MUST support OAuth 2.0 bearer tokens {{!RFC6750}} or mutual TLS (mTLS). API keys are acceptable for development but do not satisfy the authentication requirement for production use.
+Agents MUST authenticate when registering by presenting a Workload Identity Token (WIT) and Workload Proof Token (WPT) as defined in {{I-D.ietf-wimse-workload-creds}} and {{I-D.ietf-wimse-wpt}}. The AD verifies both tokens as specified in {{registration-auth}}. This provides proof-of-possession: the agent demonstrates control of the private key bound to its identity, not merely possession of a bearer token.
 
-Registration requires a verified agent identity: the AD must know who is registering before it can enforce ownership of the registration resource. Bearer tokens prove authorization but not workload identity. For production deployments, the AD SHOULD accept workload identity credentials as defined by the WIMSE working group {{I-D.ietf-wimse-arch}}. The WIMSE architecture treats agents as workloads and defines a `wimse:` URI scheme {{I-D.ietf-wimse-identifier}} that can serve as the agent's authenticated identity at registration time. This provides a cryptographically verifiable binding between the registrant and the registration.
+The WIT+WPT mechanism provides the following security properties for registration:
 
-If an agent's credentials are compromised, the attacker can modify the registration (including the `base` URI) until the credentials are revoked. Deployments SHOULD keep credential lifetimes comparable to registration lifetimes, and SHOULD log registration changes for audit.
+* The registrant's identity is cryptographically verifiable (the WIT is signed by a trusted Identity Server).
+* The registrant proves live possession of the private key (the WPT cannot be replayed from an intercepted WIT).
+* Registration ownership is bound to the identity, not to a session or bearer token.
+
+If an agent's private key is compromised, the attacker can modify the registration until the WIT expires. Because WITs are short-lived (hours-scale), the exposure window is bounded. Deployments SHOULD log registration changes for audit.
+
+The AD MAY additionally require TLS client certificates (mTLS) at the transport layer for defense in depth, but this does not replace the application-layer WIT+WPT requirement.
 
 ## Authorization
 
@@ -649,9 +673,9 @@ These systems are each tied to a single provider: a cloud vendor, a SaaS operato
 
 ANP's Agent Discovery Protocol {{ANP-Discovery}} defines active discovery via `/.well-known/agent-descriptions` and passive discovery where agents register with a search service. The AD's registration model corresponds to ANP's passive mode but specifies the registration API concretely. ANP uses JSON-LD and DIDs; the AD uses plain JSON and HTTP URIs. The broader ANP framework is described in {{I-D.zyyhl-agent-networks-framework}}.
 
-## Agent Identity Profiles
+## Agent Identity
 
-The AD's `identity` and `identity_type` fields provide an extension point for linking registrations to external identity metadata. The Agent Identity Profile (AIP) is one such format, defining a JSON document that describes an agent's owner binding, capabilities, attestation state, trust posture, and credential lifecycle. Other formats include OpenID Connect Discovery documents and WIMSE workload identity endpoints. The AD does not mandate any particular identity schema; it provides the pointer so that clients can verify agents through whatever trust framework their deployment requires.
+The AD requires agents to prove their identity at registration time using WIMSE workload credentials (WIT+WPT). The verified identity (the WIT `sub` claim) is stored with the registration and returned to clients in the `identity` field of lookup responses. This provides a cryptographically verified identity binding without requiring clients to re-verify credentials themselves. Clients that need stronger assurance can verify the agent's identity independently by obtaining the Identity Server's trust bundle for the trust domain in the `identity` URI.
 
 # Examples {#examples}
 
@@ -763,6 +787,8 @@ Step 1: Agents register with the AD.
     POST /ad/r?agent=ticket-classifier HTTP/1.1
     Host: ad.example.com
     Content-Type: application/json
+    Workload-Identity-Token: <WIT>
+    Workload-Proof-Token: <WPT>
 
     {
       "base": "https://agents.example.com/ticket-classifier",
@@ -781,6 +807,8 @@ Step 1: Agents register with the AD.
     POST /ad/r?agent=knowledge-lookup HTTP/1.1
     Host: ad.example.com
     Content-Type: application/json
+    Workload-Identity-Token: <WIT>
+    Workload-Proof-Token: <WPT>
 
     {
       "base": "https://agents.example.com/kb",
@@ -798,6 +826,8 @@ Step 1: Agents register with the AD.
     POST /ad/r?agent=order-router HTTP/1.1
     Host: ad.example.com
     Content-Type: application/json
+    Workload-Identity-Token: <WIT>
+    Workload-Proof-Token: <WPT>
 
     {
       "base": "https://agents.example.com/order-router",
@@ -906,8 +936,9 @@ A second entity attempts to register an agent under an already-claimed name.
 
     POST /ad/r?agent=ticket-classifier HTTP/1.1
     Host: ad.example.com
-    Authorization: Bearer <token-of-other-entity>
     Content-Type: application/json
+    Workload-Identity-Token: <attacker-WIT>
+    Workload-Proof-Token: <attacker-WPT>
 
     {
       "base": "https://attacker.example.org/ticket-classifier",
