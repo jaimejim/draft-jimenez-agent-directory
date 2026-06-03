@@ -4,8 +4,8 @@
 
 Network Working Group                                         J. Jimenez
 Internet-Draft                                                  Ericsson
-Intended status: Standards Track                              8 May 2026
-Expires: 9 November 2026
+Intended status: Standards Track                             3 June 2026
+Expires: 5 December 2026
 
 
                             Agent Directory
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 9 November 2026.
+   This Internet-Draft will expire on 5 December 2026.
 
 Copyright Notice
 
@@ -77,7 +77,8 @@ Table of Contents
      3.2.  DNS-SD
    4.  Registration
      4.1.  Registration Request
-       4.1.1.  Capability Types
+       4.1.1.  Registration Authentication
+       4.1.2.  Capability Types
      4.2.  Registration Semantics
      4.3.  Reading a Registration
      4.4.  Registration Update
@@ -113,7 +114,7 @@ Table of Contents
      A.7.  DNS-Based Agent Discovery
      A.8.  Platform-Specific and On-Chain Registries
      A.9.  Agent Network Protocol (ANP)
-     A.10. Agent Identity Profiles
+     A.10. Agent Identity
    Appendix B.  Examples
      B.1.  Discovery Flow
      B.2.  Enterprise Agent Portfolio
@@ -373,42 +374,49 @@ Table of Contents
    defined in [RFC9110].  The request body is a JSON object containing
    the agent's metadata and capabilities.
 
-   POST /ad/r?agent=summarizer-v2 HTTP/1.1
-   Host: directory.example.com
-   Content-Type: application/json
+   The agent MUST prove its identity by including a Workload Identity
+   Token (WIT) [I-D.ietf-wimse-workload-creds] and a Workload Proof
+   Token (WPT) [I-D.ietf-wimse-wpt] in the request headers.  The WIT
+   declares the agent's identity (signed by an Identity Server); the WPT
+   proves the agent holds the corresponding private key.  The AD
+   verifies both before accepting the registration.
 
-   {
-     "base": "https://agents.example.com/summarizer-v2",
-     "description": "Summarizes documents and extracts named entities",
-     "protocols": ["a2a"],
-     "capabilities": [
-       {
-         "name": "summarize",
-         "type": "tool",
-         "description": "Summarize a document or text passage",
-         "input_schema": {
-           "type": "object",
-           "properties": {
-             "text": {"type": "string"},
-             "max_length": {"type": "integer"}
-           },
-           "required": ["text"]
-         }
-       },
-       {
-         "name": "extract_entities",
-         "type": "tool",
-         "description": "Extract named entities from text"
-       }
-     ],
-     "version": "2.1.0",
-     "vendor": "Example Corp",
-     "identity": "https://registry.example.com/agents/summarizer-v2",
-     "identity_type": "aip"
-   }
+POST /ad/r?agent=cdn-cache-manager HTTP/1.1
+Host: directory.example.com
+Content-Type: application/json
+Workload-Identity-Token: <WIT>
+Workload-Proof-Token: <WPT>
 
-   HTTP/1.1 201 Created
-   Location: /ad/r/4521
+{
+  "base": "https://agents.example.com/cdn-cache-manager",
+  "description": "Manages CDN cache invalidation and prefetch policies",
+  "protocols": ["a2a"],
+  "capabilities": [
+    {
+      "name": "purge_by_tag",
+      "type": "tool",
+      "description": "Invalidate cached objects matching a surrogate key",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "tag": {"type": "string"},
+          "zone_id": {"type": "string"}
+        },
+        "required": ["tag"]
+      }
+    },
+    {
+      "name": "prefetch_origins",
+      "type": "tool",
+      "description": "Warm cache by fetching from origin servers"
+    }
+  ],
+  "version": "1.3.0",
+  "vendor": "Example Corp"
+}
+
+HTTP/1.1 201 Created
+Location: /ad/r/4521
 
    The query parameters are:
 
@@ -445,7 +453,7 @@ Table of Contents
    capabilities:
       (array of objects, OPTIONAL) The agent's capabilities.  Each
       object MUST have "name" (string) and "type" (string) fields.  The
-      "type" field indicates the kind of capability (see Section 4.1.1).
+      "type" field indicates the kind of capability (see Section 4.1.2).
       Additional fields such as "description" (string), "tags" (array of
       strings), "input_schema" (object), and "output_schema" (object)
       are OPTIONAL.  When present, input_schema and output_schema SHOULD
@@ -460,31 +468,49 @@ Table of Contents
       the agent.
 
    identity:
-      (string, OPTIONAL) A URI pointing to the agent's identity metadata
-      document.  This document describes the agent's verified identity,
-      trust posture, owner binding, or credentials in a structured
-      format.  The AD stores and returns this URI without interpreting
-      its contents.
+      (string, OPTIONAL) The agent's identity URI as declared in the WIT
+      sub claim (e.g., a wimse:// URI).  The AD populates this field
+      from the verified WIT when present; agents SHOULD NOT set it
+      manually.  Clients can use this value to verify the agent's
+      identity through the issuing trust domain.
 
-   identity_type:
-      (string, OPTIONAL) The schema or format of the identity document
-      referenced by identity.  Values include "aip" (Agent Identity
-      Profile), "oidc" (OpenID Connect Discovery), "wimse" (WIMSE
-      workload identity), and "did" (Decentralized Identifier Document).
-      Clients that recognize the type can dereference and validate the
-      identity document; clients that do not recognize the type SHOULD
-      ignore both fields.
+4.1.1.  Registration Authentication
 
-   When present, the identity field lets a client verify an agent beyond
-   trusting the AD.  For example, a client discovering a financial-
-   analysis agent can fetch its AIP document to check owner binding,
-   attestation state, and credential lifetime before invoking the agent.
-   The AD stores the URI and does not interpret it; trust decisions
-   remain the client's.  Clients MUST NOT treat the presence of an
-   identity field as proof of identity without verifying the referenced
-   document.
+   The AD MUST verify the agent's identity before accepting a
+   registration.  The verification procedure is:
 
-4.1.1.  Capability Types
+   1.  Extract the WIT from the Workload-Identity-Token header; verify
+       its signature against the Identity Server's published signing key
+       for the trust domain in the WIT iss claim.
+
+   2.  Check that the WIT has not expired (exp).
+
+   3.  Extract the public key from the WIT cnf.jwk claim.
+
+   4.  Extract the WPT from the Workload-Proof-Token header; verify its
+       signature using the public key from step 3.
+
+   5.  Verify the WPT aud claim matches the AD's registration endpoint
+       URI.
+
+   6.  Verify the WPT wth claim matches the SHA-256 hash of the WIT
+       value.
+
+   7.  Check that the WPT has not expired (exp) and that its jti has not
+       been seen before.
+
+   If any step fails, the AD MUST reject the registration with 401
+   (Unauthorized).  On success, the AD binds the registration to the WIT
+   sub identity.  Subsequent updates and deletions MUST present a valid
+   WIT+WPT pair with the same sub value.
+
+   The AD stores the verified identity (the WIT sub claim) as part of
+   the registration resource and returns it in the identity field of
+   lookup responses.  This provides clients with a cryptographically
+   verified identity without requiring them to re-verify the WIT
+   themselves.
+
+4.1.2.  Capability Types
 
    The "type" field in a capability object indicates the kind of
    function the agent exposes.  The following initial values are
@@ -520,16 +546,17 @@ Table of Contents
    representations.
 
    *  If no registration exists for the agent name, a new registration
-      resource is created.  The AD returns 201 (Created) with a Location
-      header pointing to the registration resource.
+      resource is created.  The AD binds it to the WIT sub identity.
+      The AD returns 201 (Created) with a Location header pointing to
+      the registration resource.
 
-   *  If a registration already exists for the agent name and the
-      request comes from the same authenticated entity, the registration
-      is replaced with the new content.  The AD returns 200 (OK) with
-      the Location header of the existing registration resource.
+   *  If a registration already exists for the agent name and the WIT
+      sub matches the identity bound at creation, the registration is
+      replaced with the new content.  The AD returns 200 (OK) with the
+      Location header of the existing registration resource.
 
-   *  If a registration already exists for the agent name but is owned
-      by a different authenticated entity, the AD returns 409
+   *  If a registration already exists for the agent name but is bound
+      to a different identity (different WIT sub), the AD returns 409
       (Conflict).
 
    The response body for both 201 and 200 is empty.  Clients that need
@@ -543,40 +570,40 @@ Table of Contents
    An agent or client retrieves a single registration by sending a GET
    request to the registration resource.
 
-   GET /ad/r/4521 HTTP/1.1
-   Host: directory.example.com
+GET /ad/r/4521 HTTP/1.1
+Host: directory.example.com
 
-   HTTP/1.1 200 OK
-   Content-Type: application/json
+HTTP/1.1 200 OK
+Content-Type: application/json
 
-   {
-     "agent": "summarizer-v2",
-     "base": "https://agents.example.com/summarizer-v2",
-     "protocols": ["a2a"],
-     "capabilities": [
-       {
-         "name": "summarize",
-         "type": "tool",
-         "description": "Summarize a document or text passage",
-         "input_schema": {
-           "type": "object",
-           "properties": {
-             "text": {"type": "string"},
-             "max_length": {"type": "integer"}
-           },
-           "required": ["text"]
-         }
-       },
-       {
-         "name": "extract_entities",
-         "type": "tool",
-         "description": "Extract named entities from text"
-       }
-     ],
-     "version": "2.1.0",
-     "vendor": "Example Corp",
-     "href": "/ad/r/4521"
-   }
+{
+  "agent": "cdn-cache-manager",
+  "base": "https://agents.example.com/cdn-cache-manager",
+  "protocols": ["a2a"],
+  "capabilities": [
+    {
+      "name": "purge_by_tag",
+      "type": "tool",
+      "description": "Invalidate cached objects matching a surrogate key",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "tag": {"type": "string"},
+          "zone_id": {"type": "string"}
+        },
+        "required": ["tag"]
+      }
+    },
+    {
+      "name": "prefetch_origins",
+      "type": "tool",
+      "description": "Warm cache by fetching from origin servers"
+    }
+  ],
+  "version": "1.3.0",
+  "vendor": "Example Corp",
+  "href": "/ad/r/4521"
+}
 
    The response includes the full registration content, including
    capability details (description, schemas) that are omitted from
@@ -728,6 +755,11 @@ Content-Type: application/json
    protocols:
       Interaction protocols the agent supports.
 
+   identity:
+      The agent's verified identity URI (from the WIT sub claim
+      presented at registration).  Clients can use this to verify the
+      agent through its trust domain.
+
    capabilities:
       An array of capability summary objects, each with "name" and
       "type".  Full details (descriptions, schemas, tags) are omitted to
@@ -830,27 +862,33 @@ Content-Type: application/json
 
 8.2.  Authentication
 
-   Agents MUST authenticate when registering.  The AD MUST support OAuth
-   2.0 bearer tokens [RFC6750] or mutual TLS (mTLS).  API keys are
-   acceptable for development but do not satisfy the authentication
-   requirement for production use.
+   Agents MUST authenticate when registering by presenting a Workload
+   Identity Token (WIT) and Workload Proof Token (WPT) as defined in
+   [I-D.ietf-wimse-workload-creds] and [I-D.ietf-wimse-wpt].  The AD
+   verifies both tokens as specified in Section 4.1.1.  This provides
+   proof-of-possession: the agent demonstrates control of the private
+   key bound to its identity, not merely possession of a bearer token.
 
-   Registration requires a verified agent identity: the AD must know who
-   is registering before it can enforce ownership of the registration
-   resource.  Bearer tokens prove authorization but not workload
-   identity.  For production deployments, the AD SHOULD accept workload
-   identity credentials as defined by the WIMSE working group
-   [I-D.ietf-wimse-arch].  The WIMSE architecture treats agents as
-   workloads and defines a wimse: URI scheme [I-D.ietf-wimse-identifier]
-   that can serve as the agent's authenticated identity at registration
-   time.  This provides a cryptographically verifiable binding between
-   the registrant and the registration.
+   The WIT+WPT mechanism provides the following security properties for
+   registration:
 
-   If an agent's credentials are compromised, the attacker can modify
-   the registration (including the base URI) until the credentials are
-   revoked.  Deployments SHOULD keep credential lifetimes comparable to
-   registration lifetimes, and SHOULD log registration changes for
-   audit.
+   *  The registrant's identity is cryptographically verifiable (the WIT
+      is signed by a trusted Identity Server).
+
+   *  The registrant proves live possession of the private key (the WPT
+      cannot be replayed from an intercepted WIT).
+
+   *  Registration ownership is bound to the identity, not to a session
+      or bearer token.
+
+   If an agent's private key is compromised, the attacker can modify the
+   registration until the WIT expires.  Because WITs are short-lived
+   (hours-scale), the exposure window is bounded.  Deployments SHOULD
+   log registration changes for audit.
+
+   The AD MAY additionally require TLS client certificates (mTLS) at the
+   transport layer for defense in depth, but this does not replace the
+   application-layer WIT+WPT requirement.
 
 8.3.  Authorization
 
@@ -919,6 +957,21 @@ Content-Type: application/json
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
+   [I-D.ietf-wimse-workload-creds]
+              Campbell, B., Salowey, J. A., Schwenkschuster, A.,
+              Sheffer, Y., and Y. Rosomakho, "WIMSE Workload
+              Credentials", Work in Progress, Internet-Draft, draft-
+              ietf-wimse-workload-creds-01, 5 May 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
+              workload-creds-01>.
+
+   [I-D.ietf-wimse-wpt]
+              Campbell, B. and A. Schwenkschuster, "WIMSE Workload Proof
+              Token", Work in Progress, Internet-Draft, draft-ietf-
+              wimse-wpt-01, 2 March 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
+              wpt-01>.
+
    [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
               Resource Identifier (URI): Generic Syntax", STD 66,
               RFC 3986, DOI 10.17487/RFC3986, January 2005,
@@ -928,11 +981,6 @@ Content-Type: application/json
               and D. Orchard, "URI Template", RFC 6570,
               DOI 10.17487/RFC6570, March 2012,
               <https://www.rfc-editor.org/rfc/rfc6570>.
-
-   [RFC6750]  Jones, M. and D. Hardt, "The OAuth 2.0 Authorization
-              Framework: Bearer Token Usage", RFC 6750,
-              DOI 10.17487/RFC6750, October 2012,
-              <https://www.rfc-editor.org/rfc/rfc6750>.
 
    [RFC8288]  Nottingham, M., "Web Linking", RFC 8288,
               DOI 10.17487/RFC8288, October 2017,
@@ -986,9 +1034,9 @@ Content-Type: application/json
 
    [I-D.hood-independent-agtp]
               Hood, C., "Agent Transfer Protocol (AGTP)", Work in
-              Progress, Internet-Draft, draft-hood-independent-agtp-06,
-              27 April 2026, <https://datatracker.ietf.org/doc/html/
-              draft-hood-independent-agtp-06>.
+              Progress, Internet-Draft, draft-hood-independent-agtp-08,
+              25 May 2026, <https://datatracker.ietf.org/doc/html/draft-
+              hood-independent-agtp-08>.
 
    [I-D.ietf-wimse-arch]
               Salowey, J. A., Rosomakho, Y., and H. Tschofenig,
@@ -1006,11 +1054,11 @@ Content-Type: application/json
               identifier-02>.
 
    [I-D.mozleywilliams-dnsop-dnsaid]
-              Mozley, J., Williams, N., Sarikaya, B., and R. Schott,
-              "DNS for AI Discovery", Work in Progress, Internet-Draft,
-              draft-mozleywilliams-dnsop-dnsaid-01, 2 March 2026,
-              <https://datatracker.ietf.org/doc/html/draft-
-              mozleywilliams-dnsop-dnsaid-01>.
+              Mozley, J., Williams, N., Sarikaya, B., Schott, R., and J.
+              Damick, "DNS for AI Discovery", Work in Progress,
+              Internet-Draft, draft-mozleywilliams-dnsop-dnsaid-02, 27
+              May 2026, <https://datatracker.ietf.org/doc/html/draft-
+              mozleywilliams-dnsop-dnsaid-02>.
 
    [I-D.mp-agntcy-ads]
               Muscariello, L. and R. Polic, "Agent Directory Service",
@@ -1180,17 +1228,17 @@ A.9.  Agent Network Protocol (ANP)
    plain JSON and HTTP URIs.  The broader ANP framework is described in
    [I-D.zyyhl-agent-networks-framework].
 
-A.10.  Agent Identity Profiles
+A.10.  Agent Identity
 
-   The AD's identity and identity_type fields provide an extension point
-   for linking registrations to external identity metadata.  The Agent
-   Identity Profile (AIP) is one such format, defining a JSON document
-   that describes an agent's owner binding, capabilities, attestation
-   state, trust posture, and credential lifecycle.  Other formats
-   include OpenID Connect Discovery documents and WIMSE workload
-   identity endpoints.  The AD does not mandate any particular identity
-   schema; it provides the pointer so that clients can verify agents
-   through whatever trust framework their deployment requires.
+   The AD requires agents to prove their identity at registration time
+   using WIMSE workload credentials (WIT+WPT).  The verified identity
+   (the WIT sub claim) is stored with the registration and returned to
+   clients in the identity field of lookup responses.  This provides a
+   cryptographically verified identity binding without requiring clients
+   to re-verify credentials themselves.  Clients that need stronger
+   assurance can verify the agent's identity independently by obtaining
+   the Identity Server's trust bundle for the trust domain in the
+   identity URI.
 
 Appendix B.  Examples
 
@@ -1209,7 +1257,7 @@ B.1.  Discovery Flow
         |  <--- lookup URI Template    |                            |
         |                              |                            |
         |  3. GET /ad/l?               |                            |
-        |     cap_name=summarize ----->|                            |
+        |     cap_name=purge* -------->|                            |
         |  <--- matching agents + base |                            |
         |                              |                            |
         |  4. Interact with agent using protocol from lookup -----> |
@@ -1249,9 +1297,9 @@ B.1.  Discovery Flow
 
    Step 3: Search for an agent with the desired capability.
 
-   The client expands the lookup URI Template with cap_name=summarize.
+   The client expands the lookup URI Template with cap_name=purge*.
 
-GET https://ad.example.com/ad/l?cap_name=summarize HTTP/1.1
+GET https://ad.example.com/ad/l?cap_name=purge* HTTP/1.1
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -1259,13 +1307,13 @@ Content-Type: application/json
 {
   "agents": [
     {
-      "agent": "summarizer-v2",
-      "base": "https://agents.example.com/summarizer-v2",
-      "description": "Summarizes documents and extracts named entities",
+      "agent": "cdn-cache-manager",
+      "base": "https://agents.example.com/cdn-cache-manager",
+      "description": "Manages CDN cache invalidation and prefetch policies",
       "protocols": ["a2a"],
       "capabilities": [
-        {"name": "summarize", "type": "tool"},
-        {"name": "extract_entities", "type": "tool"}
+        {"name": "purge_by_tag", "type": "tool"},
+        {"name": "prefetch_origins", "type": "tool"}
       ],
       "href": "/ad/r/4521"
     }
@@ -1277,11 +1325,11 @@ Content-Type: application/json
 
    Step 4: Interact with the agent.
 
-   The lookup response indicated that summarizer-v2 is reachable over
-   A2A.  The client fetches the agent's A2A Agent Card to obtain the
-   full task interface before invocation.
+   The lookup response indicated that cdn-cache-manager is reachable
+   over A2A.  The client fetches the agent's A2A Agent Card to obtain
+   the full task interface before invocation.
 
-GET https://agents.example.com/summarizer-v2/.well-known/agent-card.json
+GET https://agents.example.com/cdn-cache-manager/.well-known/agent-card.json
 HTTP/1.1
 
 HTTP/1.1 200 OK
@@ -1302,6 +1350,8 @@ B.2.  Enterprise Agent Portfolio
    POST /ad/r?agent=ticket-classifier HTTP/1.1
    Host: ad.example.com
    Content-Type: application/json
+   Workload-Identity-Token: <WIT>
+   Workload-Proof-Token: <WPT>
 
    {
      "base": "https://agents.example.com/ticket-classifier",
@@ -1320,6 +1370,8 @@ B.2.  Enterprise Agent Portfolio
    POST /ad/r?agent=knowledge-lookup HTTP/1.1
    Host: ad.example.com
    Content-Type: application/json
+   Workload-Identity-Token: <WIT>
+   Workload-Proof-Token: <WPT>
 
    {
      "base": "https://agents.example.com/kb",
@@ -1337,6 +1389,8 @@ B.2.  Enterprise Agent Portfolio
    POST /ad/r?agent=order-router HTTP/1.1
    Host: ad.example.com
    Content-Type: application/json
+   Workload-Identity-Token: <WIT>
+   Workload-Proof-Token: <WPT>
 
    {
      "base": "https://agents.example.com/order-router",
@@ -1447,8 +1501,9 @@ B.4.  Registration Conflict
 
    POST /ad/r?agent=ticket-classifier HTTP/1.1
    Host: ad.example.com
-   Authorization: Bearer <token-of-other-entity>
    Content-Type: application/json
+   Workload-Identity-Token: <attacker-WIT>
+   Workload-Proof-Token: <attacker-WPT>
 
    {
      "base": "https://attacker.example.org/ticket-classifier",
