@@ -81,7 +81,7 @@ jobs:
         REPO: ${{ github.event.repository.name }}
       run: |
         set -euo pipefail
-        sudo chown -R $(id -u):$(id -g) .git/objects
+        sudo chown -R $(id -u):$(id -g) .git
         git fetch --depth=1 origin gh-pages
         git worktree add /tmp/ghpages-rewrite FETCH_HEAD
         cd /tmp/ghpages-rewrite
