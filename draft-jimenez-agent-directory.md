@@ -32,6 +32,7 @@ normative:
 informative:
   RFC6690:
   RFC6763:
+  RFC8553:
   I-D.pioli-agent-discovery:
   I-D.mp-agntcy-ads:
   I-D.narajala-ans:
@@ -188,13 +189,13 @@ A GET request to this URI returns a JSON document describing the AD's interfaces
 
 {:vspace}
 registration:
-: (string, REQUIRED) Path to the registration endpoint.
+: (string, REQUIRED) Path to the registration endpoint, where agents publish their metadata (see {{registration}}).
 
 lookup:
-: (string, REQUIRED) URI Template {{RFC6570}} for the lookup endpoint. The template variables indicate the supported query parameters.
+: (string, REQUIRED) URI Template {{RFC6570}} for the lookup endpoint, where clients discover agents by capability (see {{lookup}}). The template variables indicate the supported query parameters (see {{lookup-params}}).
 
 max_count:
-: (integer, REQUIRED) Maximum value the AD accepts for the `count` pagination parameter.
+: (integer, REQUIRED) Maximum value the AD accepts for the `count` pagination parameter (see {{pagination}}).
 
 Example:
 
@@ -210,9 +211,11 @@ Example:
       "max_count": 100
     }
 
+The response tells the client three things: the `registration` path (`/ad/r`) where agents publish their metadata, the `lookup` URI Template (`/ad/l{?...}`) whose variables enumerate the query parameters the AD supports, and `max_count`, the largest page size the AD will honour. A client expands the lookup template with the filters it needs (see {{lookup}}) and issues a GET.
+
 ## DNS-SD
 
-An AD MAY advertise itself on a local network via DNS-SD {{RFC6763}} using the service name `_ad._tcp`. This provides zero-configuration discovery of a local AD, which is useful on networks where agents are colocated with sensors and actuators.
+An AD MAY advertise itself on a local network via DNS-SD {{RFC6763}} using the service name `_ad._tcp`. The underscore-prefixed service name follows the guidance in {{RFC8553}}, which updates {{RFC6763}} and governs the "_ad" entry in the underscored node-name space. This provides zero-configuration discovery of a local AD, which is useful on networks where agents are colocated with sensors and actuators.
 
 Several DNS-based mechanisms have been proposed in the DAWN working group for wide-area agent discovery. DNS-AID {{I-D.mozleywilliams-dnsop-dnsaid}} publishes agent metadata under `_agents` subdomains using SVCB records. DN-ANR {{I-D.cui-dns-native-agent-naming-resolution}} defines a resolution layer using FQDNs and SVCB/HTTPS records. These mechanisms handle naming and resolution: mapping an agent name to a network location. The AD handles the layer above: finding agents by capability without prior knowledge of their names. DNS resolves the AD's hostname; the AD carries the capability metadata that DNS cannot efficiently carry.
 
@@ -425,7 +428,7 @@ The AD MUST automatically remove a registration when its lifetime elapses withou
 
 # Lookup {#lookup}
 
-The AD provides a lookup endpoint for discovering registered agents. The lookup endpoint URI is obtained from the well-known response ({{discovery}}). All query parameters act as conjunctive filters: only agents matching all specified criteria are returned. A request with no filters returns all agents visible to the requesting client.
+The AD provides a lookup endpoint for discovering registered agents. The lookup endpoint URI is obtained from the well-known response ({{discovery}}). All query parameters act as conjunctive filters: only agents matching all specified criteria are returned. A request with no filters returns all agents visible to the requesting client. The full set of filters is defined in {{lookup-params}}; the example below uses `cap_name` as an illustration.
 
     GET /ad/l?cap_name=purge* HTTP/1.1
     Host: directory.example.com
@@ -450,7 +453,7 @@ The AD provides a lookup endpoint for discovering registered agents. The lookup 
       ]
     }
 
-## Query Parameters {#lookup-params}
+## Lookup Query Parameters {#lookup-params}
 
 All filters use exact match on the registered value, with one exception: `agent` and `cap_name` support a single trailing `*` as a prefix-match operator (e.g., `cap_name=purge*` matches `purge_by_tag`). The `*` character MUST NOT appear anywhere else in these values, and agent and capability names MUST NOT contain a literal `*`. The AD MUST reject registrations whose agent or capability names contain `*` with 400 (Bad Request). No other glob or regular-expression syntax is supported.
 
