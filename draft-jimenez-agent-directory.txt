@@ -4,8 +4,8 @@
 
 Network Working Group                                         J. Jimenez
 Internet-Draft                                                  Ericsson
-Intended status: Standards Track                             3 June 2026
-Expires: 5 December 2026
+Intended status: Standards Track                             3 July 2026
+Expires: 4 January 2027
 
 
                             Agent Directory
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 5 December 2026.
+   This Internet-Draft will expire on 4 January 2027.
 
 Copyright Notice
 
@@ -84,7 +84,7 @@ Table of Contents
      4.4.  Registration Update
      4.5.  Registration Removal
    5.  Lookup
-     5.1.  Query Parameters
+     5.1.  Lookup Query Parameters
      5.2.  Lookup Response
      5.3.  Pagination
    6.  Error Responses
@@ -323,15 +323,18 @@ Table of Contents
    interfaces.  The response object contains the following fields:
 
    registration:
-      (string, REQUIRED) Path to the registration endpoint.
+      (string, REQUIRED) Path to the registration endpoint, where agents
+      publish their metadata (see Section 4).
 
    lookup:
-      (string, REQUIRED) URI Template [RFC6570] for the lookup endpoint.
-      The template variables indicate the supported query parameters.
+      (string, REQUIRED) URI Template [RFC6570] for the lookup endpoint,
+      where clients discover agents by capability (see Section 5).  The
+      template variables indicate the supported query parameters (see
+      Section 5.1).
 
    max_count:
       (integer, REQUIRED) Maximum value the AD accepts for the count
-      pagination parameter.
+      pagination parameter (see Section 5.3).
 
    Example:
 
@@ -347,12 +350,21 @@ Table of Contents
     "max_count": 100
   }
 
+   The response tells the client three things: the registration path
+   (/ad/r) where agents publish their metadata, the lookup URI Template
+   (/ad/l{?...}) whose variables enumerate the query parameters the AD
+   supports, and max_count, the largest page size the AD will honour.  A
+   client expands the lookup template with the filters it needs (see
+   Section 5) and issues a GET.
+
 3.2.  DNS-SD
 
    An AD MAY advertise itself on a local network via DNS-SD [RFC6763]
-   using the service name _ad._tcp.  This provides zero-configuration
-   discovery of a local AD, which is useful on networks where agents are
-   colocated with sensors and actuators.
+   using the service name _ad._tcp.  The underscore-prefixed service
+   name follows the guidance in [RFC8553], which updates [RFC6763] and
+   governs the "_ad" entry in the underscored node-name space.  This
+   provides zero-configuration discovery of a local AD, which is useful
+   on networks where agents are colocated with sensors and actuators.
 
    Several DNS-based mechanisms have been proposed in the DAWN working
    group for wide-area agent discovery.  DNS-AID
@@ -667,7 +679,9 @@ Content-Type: application/json
    The lookup endpoint URI is obtained from the well-known response
    (Section 3).  All query parameters act as conjunctive filters: only
    agents matching all specified criteria are returned.  A request with
-   no filters returns all agents visible to the requesting client.
+   no filters returns all agents visible to the requesting client.  The
+   full set of filters is defined in Section 5.1; the example below uses
+   cap_name as an illustration.
 
 GET /ad/l?cap_name=purge* HTTP/1.1
 Host: directory.example.com
@@ -692,7 +706,7 @@ Content-Type: application/json
   ]
 }
 
-5.1.  Query Parameters
+5.1.  Lookup Query Parameters
 
    All filters use exact match on the registered value, with one
    exception: agent and cap_name support a single trailing * as a
@@ -961,9 +975,9 @@ Content-Type: application/json
               Campbell, B., Salowey, J. A., Schwenkschuster, A.,
               Sheffer, Y., and Y. Rosomakho, "WIMSE Workload
               Credentials", Work in Progress, Internet-Draft, draft-
-              ietf-wimse-workload-creds-01, 5 May 2026,
+              ietf-wimse-workload-creds-02, 2 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
-              workload-creds-01>.
+              workload-creds-02>.
 
    [I-D.ietf-wimse-wpt]
               Campbell, B. and A. Schwenkschuster, "WIMSE Workload Proof
@@ -1034,9 +1048,9 @@ Content-Type: application/json
 
    [I-D.hood-independent-agtp]
               Hood, C., "Agent Transfer Protocol (AGTP)", Work in
-              Progress, Internet-Draft, draft-hood-independent-agtp-08,
-              25 May 2026, <https://datatracker.ietf.org/doc/html/draft-
-              hood-independent-agtp-08>.
+              Progress, Internet-Draft, draft-hood-independent-agtp-09,
+              28 June 2026, <https://datatracker.ietf.org/doc/html/
+              draft-hood-independent-agtp-09>.
 
    [I-D.ietf-wimse-arch]
               Salowey, J. A., Rosomakho, Y., and H. Tschofenig,
@@ -1107,6 +1121,11 @@ Content-Type: application/json
               Code: The Implementation Status Section", BCP 205,
               RFC 7942, DOI 10.17487/RFC7942, July 2016,
               <https://www.rfc-editor.org/rfc/rfc7942>.
+
+   [RFC8553]  Crocker, D., "DNS Attrleaf Changes: Fixing Specifications
+              That Use Underscored Node Names", BCP 222, RFC 8553,
+              DOI 10.17487/RFC8553, March 2019,
+              <https://www.rfc-editor.org/rfc/rfc8553>.
 
 Appendix A.  Relationship to Other Work
 
