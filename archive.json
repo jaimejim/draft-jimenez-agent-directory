@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-07-02T00:29:49.863326+00:00",
+  "timestamp": "2026-07-05T00:24:40.567219+00:00",
   "repo": "jaimejim/draft-jimenez-agent-directory",
   "labels": [
     {
@@ -49,6 +49,275 @@
       "color": "ffffff"
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "number": 1,
+      "id": "I_kwDOSW_UBM8AAAABHlG6iw",
+      "title": "Generalize AD to support multiple agent record formats",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/1",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "The directory currently defines a single record format. Consider a more generic AD service that can hold and serve various formats of agent records (e.g. agent cards, MCP tool descriptors) using the same registration/lookup machinery, rather than a single fixed format.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:38Z",
+      "updatedAt": "2026-07-03T12:57:38Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 2,
+      "id": "I_kwDOSW_UBM8AAAABHlG7NA",
+      "title": "Key registration and ownership on a verifiable agent identity, not the name",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/2",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "Registration is currently idempotent on the agent *name* (\u00a74.2), and ownership/name-conflict handling in \u00a77.1 is name-based. Names look like a local parameter. Consider basing registration and ownership on a verifiable agent **identity** instead. The ID specification itself can stay out of scope, but the registration should carry the information needed to verify the identity, and registration should succeed only if that verification passes. This also strengthens the security model and relates to the WIMSE text already in \u00a78.2. (Also referenced in \u00a77.2.)\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:40Z",
+      "updatedAt": "2026-07-03T12:57:40Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 3,
+      "id": "I_kwDOSW_UBM8AAAABHlG7uA",
+      "title": "Define the Agent Record as a first-class JSON object, incl. ownership metadata",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/3",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "The registration fields in \u00a72.2 already describe what is effectively an Agent Record. Consider defining it directly as a JSON object. It should also carry data about *who* registered the agent and *who* is allowed to delete or modify the record, unless that information is intended to live elsewhere (in which case say where).\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:41Z",
+      "updatedAt": "2026-07-03T12:57:41Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 4,
+      "id": "I_kwDOSW_UBM8AAAABHlG8Pw",
+      "title": "Privacy: lookup requests leak querier interest; discuss oHTTP (RFC 9458)",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/4",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "\u00a78.4 covers what lookup *responses* disclose (an organization's deployed capabilities), but not the reverse: a lookup *request* discloses which capabilities/agents the querier is interested in. Add a discussion of this, and consider whether the lookup interface can run over Oblivious HTTP (RFC 9458) so end users can find agents without revealing their interest. See also draft-iannone-dawn-privacy-considerations.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:42Z",
+      "updatedAt": "2026-07-03T12:57:42Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 5,
+      "id": "I_kwDOSW_UBM8AAAABHlG8sQ",
+      "title": "Capability type list should be an IANA registry (RFC 8126)",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/5",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "The extensible capability type list (\u00a75) currently mirrors MCP values informally. In IETF style this should be an IANA registry with a set of initial values and a defined extension policy per RFC 8126, rather than an open-ended \"implementations MAY use additional values\" list.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:44Z",
+      "updatedAt": "2026-07-03T13:32:27Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "jaimejim",
+          "authorAssociation": "OWNER",
+          "body": "I am a bit hesitant to introduce IANA registries, the draft currently keeps both vocabularies as extensible lists with initial values. We can revisit this later on and if needed add the registries. I will keep the  issue open as the tracking item.",
+          "createdAt": "2026-07-03T13:09:14Z",
+          "updatedAt": "2026-07-03T13:32:27Z"
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "id": "I_kwDOSW_UBM8AAAABHlHDdw",
+      "title": "\u00a77: clarify whether capability attestation must be supported",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/6",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "question"
+      ],
+      "body": "\u00a77 lists policies for capability attestation and cross-domain trust as out of scope. Reconsider whether capability attestation in particular needs to be a supported/required part of the mechanism rather than out of scope.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:58Z",
+      "updatedAt": "2026-07-03T12:57:58Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 7,
+      "id": "I_kwDOSW_UBM8AAAABHlHEBA",
+      "title": "\u00a77.3 Capability Vetting: reword \u2014 operator accepts a capability set, not what an agent may \"claim\"",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/7",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "The current text says the AD SHOULD restrict which capability types/names an agent may \"claim.\" This reads unclearly: an operator does not decide which capability an individual agent claims. It decides the *set of accepted capabilities* (e.g. only register agents whose capabilities are in {X, Y, Z}, deny others). Reword \u00a77.3 to reflect that model.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:57:59Z",
+      "updatedAt": "2026-07-03T13:22:09Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "jaimejim",
+          "authorAssociation": "OWNER",
+          "body": "I lean towards identity mattering more than self-described capabilities. An agent should not announce or claim capabilities on its own. draft-ietf-oauth-identity-chaining (OAuth Identity Chaining across Trust Domains, currently in IETF LC) is a good approach in my opinion: the agent presents a JWT identity assertion to the target domain's authorization server and gets back an access token scoped to a service there.",
+          "createdAt": "2026-07-03T13:22:09Z",
+          "updatedAt": "2026-07-03T13:22:09Z"
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "id": "I_kwDOSW_UBM8AAAABHlHEog",
+      "title": "\u00a77.2 Capability Confidentiality: is enforcement only access control, or other authorization too?",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/8",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "question"
+      ],
+      "body": "\u00a77.2 states the AD MUST enforce access control on restricted lookup results. Clarify whether this is based solely on access control or whether other authorization mechanisms are also in scope.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:01Z",
+      "updatedAt": "2026-07-03T12:58:01Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 9,
+      "id": "I_kwDOSW_UBM8AAAABHlHFNg",
+      "title": "\u00a78.1 Transport Security: address QUIC alongside TLS",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/9",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "\u00a78.1 requires TLS for all communication with the AD. Add treatment of QUIC as a transport option.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:02Z",
+      "updatedAt": "2026-07-03T12:58:02Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 10,
+      "id": "I_kwDOSW_UBM8AAAABHlHFpg",
+      "title": "\u00a78.3: give concrete hints for registration size / capability-count / rate limits",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/10",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "\u00a78.3 requires limits on registration size, number of capabilities per agent, and rate limiting, but the requirement is generic. Provide hints or indicative ranges for these limits.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:03Z",
+      "updatedAt": "2026-07-03T12:58:03Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 11,
+      "id": "I_kwDOSW_UBM8AAAABHlHGJQ",
+      "title": "\u00a73.2 DNS-SD: also cite RFC 8553 (updates RFC 6763)",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/11",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "\u00a73.2 cites RFC 6763 for DNS-SD. RFC 6763 is updated by RFC 8553; cite it as well.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:05Z",
+      "updatedAt": "2026-07-03T12:58:05Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 12,
+      "id": "I_kwDOSW_UBM8AAAABHlHMfw",
+      "title": "\u00a73.1 well-known/ad: add forward references and descriptive prose",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/12",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "Editorial improvements to \u00a73.1:\n\n- Add forward references for the `registration`, `lookup`, and `max_count` fields (e.g. \"See Section 4 for further details\", \"See Section 5 for details\").\n- Add more explanatory text for these three fields to convey their purpose.\n- After the `GET /.well-known/ad` example, add prose describing what the response shows (what `registration`, `lookup`, and `max_count` mean to a client).\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:18Z",
+      "updatedAt": "2026-07-03T12:58:18Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 13,
+      "id": "I_kwDOSW_UBM8AAAABHlHNAA",
+      "title": "\u00a75 Lookup: rename to \"Lookup Query Parameters\", put field descriptions before examples, drop bare \"query\"",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/13",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "Editorial improvements to the lookup/registration parameter sections:\n\n- Retitle to \"Lookup Query Parameters.\"\n- Present the field descriptions *before* the example rather than after.\n- Avoid the bare term \"query,\" which confuses the message purpose; state the purpose instead (e.g. \"The parameters of the registration message are:\").\n- Enrich the descriptive text and move it ahead of the example.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:19Z",
+      "updatedAt": "2026-07-03T12:58:19Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 14,
+      "id": "I_kwDOSW_UBM8AAAABHlHNdw",
+      "title": "Convert figures to SVG",
+      "url": "https://github.com/jaimejim/draft-jimenez-agent-directory/issues/14",
+      "state": "OPEN",
+      "author": "jaimejim",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "body": "Convert the ASCII/text figures in the draft to SVG format.\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
+      "createdAt": "2026-07-03T12:58:21Z",
+      "updatedAt": "2026-07-03T12:58:21Z",
+      "closedAt": null,
+      "comments": []
+    }
+  ],
   "pulls": []
 }
