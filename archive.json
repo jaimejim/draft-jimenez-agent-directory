@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-07-12T00:21:16.541070+00:00",
+  "timestamp": "2026-07-14T00:19:33.045257+00:00",
   "repo": "jaimejim/draft-jimenez-agent-directory",
   "labels": [
     {
@@ -82,9 +82,17 @@
       ],
       "body": "Registration is currently idempotent on the agent *name* (\u00a74.2), and ownership/name-conflict handling in \u00a77.1 is name-based. Names look like a local parameter. Consider basing registration and ownership on a verifiable agent **identity** instead. The ID specification itself can stay out of scope, but the registration should carry the information needed to verify the identity, and registration should succeed only if that verification passes. This also strengthens the security model and relates to the WIMSE text already in \u00a78.2. (Also referenced in \u00a77.2.)\n\n---\n_Source: draft review, 2026-07-02 (L. Iannone)._",
       "createdAt": "2026-07-03T12:57:40Z",
-      "updatedAt": "2026-07-03T12:57:40Z",
+      "updatedAt": "2026-07-13T22:11:29Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "0xbrainkid",
+          "authorAssociation": "NONE",
+          "body": "Agree with making registration identity-keyed rather than name-keyed.\n\nOne split that has worked well in our AgentFolio/SATP design notes: treat the agent name as display metadata, and make the durable registration handle a verified identity tuple, for example issuer + subject/key + verification method. The registry can then carry:\n\n- current controller key or DID document pointer\n- verification evidence URI, not a required proprietary score\n- revocation / last-checked timestamp\n- signed rotation path from the current controller key, plus an explicit recovery policy\n\nThat keeps the draft neutral on whether the identity backend is DID, ERC-8004-style discovery, WIMSE, or something else, while still giving \u00a77.1 / \u00a77.2 deterministic conflict handling. Name uniqueness can stay a local directory policy; ownership should hang off the verified identity tuple.\n",
+          "createdAt": "2026-07-13T22:11:29Z",
+          "updatedAt": "2026-07-13T22:11:29Z"
+        }
+      ]
     },
     {
       "number": 3,
